@@ -342,6 +342,13 @@ Prime Agent validates skills against the Agent Skills standard. Most issues prod
 - Name starts/ends with hyphen or has consecutive hyphens
 - Description exceeds 1024 characters
 
+For directory skills (`SKILL.md`), Prime Agent also accepts common Claude/Cursor layouts without warning:
+
+- If `name` is a display title (spaces, capitals, or other non-slug characters) and the parent directory is a valid skill id, the directory name is used
+- If `name` is a valid skill id and the parent directory is not (for example a namespaced clone with consecutive hyphens), `name` is used
+
+Root `.md` files in `~/.prime/agent/skills/` still warn, because their parent directory is the skills folder rather than a per-skill directory.
+
 Unknown frontmatter fields are ignored.
 
 **Exception:** Skills with missing description are not loaded.

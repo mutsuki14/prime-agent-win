@@ -97,14 +97,135 @@ describe("skills", () => {
 			).toBe(true);
 		});
 
-		it("should warn when name contains invalid characters", () => {
+		it("should use the parent directory when frontmatter name is not a slug", () => {
 			const { skills, diagnostics } = loadSkillsFromDir({
 				dir: join(fixturesDir, "invalid-name-chars"),
 				source: "test",
 			});
 
 			expect(skills).toHaveLength(1);
-			expect(diagnostics.some((d: ResourceDiagnostic) => d.message.includes("invalid characters"))).toBe(true);
+			expect(skills[0].name).toBe("invalid-name-chars");
+			expect(diagnostics.some((d: ResourceDiagnostic) => d.message.includes("invalid characters"))).toBe(false);
+			expect(
+				diagnostics.some((d: ResourceDiagnostic) => d.message.includes("does not match parent directory")),
+			).toBe(false);
+		});
+
+		it("should use a valid parent directory when frontmatter name is a display title", () => {
+			const tempDir = mkdtempSync(join(tmpdir(), "prime-agent-skill-title-"));
+			try {
+				const skillDir = join(tempDir, "agentdb-advanced");
+				mkdirSync(skillDir, { recursive: true });
+				writeFileSync(
+					join(skillDir, "SKILL.md"),
+					`---
+name: AgentDB Advanced Features
+description: Claude-style display title in name.
+---
+
+Instructions.
+`,
+				);
+
+				const { skills, diagnostics } = loadSkillsFromDir({
+					dir: tempDir,
+					source: "user",
+				});
+
+				expect(skills).toHaveLength(1);
+				expect(skills[0].name).toBe("agentdb-advanced");
+				expect(diagnostics).toHaveLength(0);
+			} finally {
+				rmSync(tempDir, { recursive: true, force: true });
+			}
+		});
+
+		it("should use a valid frontmatter name when the parent directory is not a slug", () => {
+			const tempDir = mkdtempSync(join(tmpdir(), "prime-agent-skill-dir-"));
+			try {
+				const skillDir = join(tempDir, "taptap-maker--taptap-maker");
+				mkdirSync(skillDir, { recursive: true });
+				writeFileSync(
+					join(skillDir, "SKILL.md"),
+					`---
+name: taptap-maker
+description: Namespaced clone directory with consecutive hyphens.
+---
+
+Instructions.
+`,
+				);
+
+				const { skills, diagnostics } = loadSkillsFromDir({
+					dir: tempDir,
+					source: "user",
+				});
+
+				expect(skills).toHaveLength(1);
+				expect(skills[0].name).toBe("taptap-maker");
+				expect(diagnostics).toHaveLength(0);
+			} finally {
+				rmSync(tempDir, { recursive: true, force: true });
+			}
+		});
+
+		it("should still warn when a root markdown skill uses a display title", () => {
+			const tempDir = mkdtempSync(join(tmpdir(), "prime-agent-skill-root-"));
+			try {
+				writeFileSync(
+					join(tempDir, "notes.md"),
+					`---
+name: My Notes
+description: Root markdown skill with a display title.
+---
+
+Instructions.
+`,
+				);
+
+				const { skills, diagnostics } = loadSkillsFromDir({
+					dir: tempDir,
+					source: "user",
+				});
+
+				expect(skills).toHaveLength(1);
+				expect(skills[0].name).toBe("My Notes");
+				expect(diagnostics.some((d: ResourceDiagnostic) => d.message.includes("invalid characters"))).toBe(true);
+			} finally {
+				rmSync(tempDir, { recursive: true, force: true });
+			}
+		});
+
+		it("should warn when neither frontmatter name nor parent directory is a valid slug", () => {
+			const tempDir = mkdtempSync(join(tmpdir(), "prime-agent-skill-both-"));
+			try {
+				const skillDir = join(tempDir, "Bad Directory");
+				mkdirSync(skillDir, { recursive: true });
+				writeFileSync(
+					join(skillDir, "SKILL.md"),
+					`---
+name: Also Bad
+description: Neither name nor directory is a slug.
+---
+
+Instructions.
+`,
+				);
+
+				const { skills, diagnostics } = loadSkillsFromDir({
+					dir: tempDir,
+					source: "user",
+				});
+
+				expect(skills).toHaveLength(1);
+				expect(skills[0].name).toBe("Also Bad");
+				expect(diagnostics.some((d: ResourceDiagnostic) => d.message.includes("invalid characters"))).toBe(true);
+				expect(
+					diagnostics.some((d: ResourceDiagnostic) => d.message.includes("does not match parent directory")),
+				).toBe(true);
+			} finally {
+				rmSync(tempDir, { recursive: true, force: true });
+			}
 		});
 
 		it("should warn when name exceeds 64 characters", () => {

@@ -1,0 +1,1 @@
+- Fixed startup skill warnings for Claude-style display titles in `~/.agents/skills` by using the parent directory as the skill id when `name` is not a slug.
