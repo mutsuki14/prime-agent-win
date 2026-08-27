@@ -2,7 +2,7 @@
 
 # Prime Agent for Windows
 
-Repository: [github.com/mutsuki14/prime-agent-win](https://github.com/mutsuki14/prime-agent-win) · [Open in Cursor](https://cursor.com/codebase/mutsuki14/prime-agent-win)
+Repository: [github.com/mutsuki14/prime-agent-win](https://github.com/mutsuki14/prime-agent-win) · [Open in Cursor](https://cursor.com/codebase/mutsuki14/mutsuki14-prime-agent-win/tree/main)
 
 A local coding and research agent that runs natively on **Windows 11 PowerShell**, and also on macOS and Linux. The model works in a persistent Python REPL: it reads files, runs project commands, calls skills, and starts child agents as code. On Windows it uses PowerShell as the default shell and does not flash extra console windows.
 

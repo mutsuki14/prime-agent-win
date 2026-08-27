@@ -2,7 +2,7 @@
 
 # Prime Agent for Windows
 
-仓库：[github.com/mutsuki14/prime-agent-win](https://github.com/mutsuki14/prime-agent-win) · [在 Cursor 中打开](https://cursor.com/codebase/mutsuki14/prime-agent-win)
+仓库：[github.com/mutsuki14/prime-agent-win](https://github.com/mutsuki14/prime-agent-win) · [在 Cursor 中打开](https://cursor.com/codebase/mutsuki14/mutsuki14-prime-agent-win/tree/main)
 
 本地编码与研究代理，原生运行于 **Windows 11 PowerShell**，也可用于 macOS 和 Linux。模型在持久 Python REPL 中工作：读文件、跑项目命令、调用 skill、用代码拉起子代理。在 Windows 上默认使用 PowerShell，操作过程中不会弹出额外命令行窗口。
 
