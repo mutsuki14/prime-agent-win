@@ -115,16 +115,8 @@ export interface LoadSkillsResult {
 	diagnostics: ResourceDiagnostic[];
 }
 
-/**
- * Validate skill name per Agent Skills spec.
- * Returns array of validation error messages (empty if valid).
- */
-function validateName(name: string, parentDirName: string): string[] {
+function validateNameFormat(name: string): string[] {
 	const errors: string[] = [];
-
-	if (name !== parentDirName) {
-		errors.push(`name "${name}" does not match parent directory "${parentDirName}"`);
-	}
 
 	if (name.length > MAX_NAME_LENGTH) {
 		errors.push(`name exceeds ${MAX_NAME_LENGTH} characters (${name.length})`);
@@ -143,6 +135,53 @@ function validateName(name: string, parentDirName: string): string[] {
 	}
 
 	return errors;
+}
+
+function isValidSkillSlug(name: string): boolean {
+	return name.length > 0 && validateNameFormat(name).length === 0;
+}
+
+/**
+ * Validate skill name per Agent Skills spec.
+ * Returns array of validation error messages (empty if valid).
+ */
+function validateName(name: string, parentDirName: string): string[] {
+	const errors: string[] = [];
+
+	if (name !== parentDirName) {
+		errors.push(`name "${name}" does not match parent directory "${parentDirName}"`);
+	}
+
+	errors.push(...validateNameFormat(name));
+	return errors;
+}
+
+/**
+ * Resolve the skill id from frontmatter + parent directory.
+ *
+ * Claude/Cursor skills often put a display title in `name` ("AgentDB Advanced
+ * Features") while the directory is the slug. For SKILL.md packages, prefer a
+ * valid slug and skip the spec warnings that would otherwise flood startup.
+ * Root `.md` files keep strict validation because their parent is the skills
+ * folder, not a per-skill directory.
+ */
+function resolveSkillName(
+	frontmatterName: string | undefined,
+	parentDirName: string,
+	directorySkill: boolean,
+): { name: string; errors: string[] } {
+	const declared = frontmatterName?.trim() || undefined;
+
+	if (directorySkill && declared && !/^[a-z0-9-]+$/.test(declared) && isValidSkillSlug(parentDirName)) {
+		return { name: parentDirName, errors: [] };
+	}
+
+	if (directorySkill && declared && isValidSkillSlug(declared) && !isValidSkillSlug(parentDirName)) {
+		return { name: declared, errors: [] };
+	}
+
+	const name = declared ?? parentDirName;
+	return { name, errors: validateName(name, parentDirName) };
 }
 
 /**
@@ -400,9 +439,8 @@ function loadSkillFromFile(
 			diagnostics.push({ type: "warning", message: error, path: filePath });
 		}
 
-		const name = frontmatter.name || parentDirName;
-
-		const nameErrors = validateName(name, parentDirName);
+		const directorySkill = basename(filePath) === "SKILL.md";
+		const { name, errors: nameErrors } = resolveSkillName(frontmatter.name, parentDirName, directorySkill);
 		for (const error of nameErrors) {
 			diagnostics.push({ type: "warning", message: error, path: filePath });
 		}
