@@ -252,3 +252,11 @@ git pull --rebase && git push
 ### User override
 
 If the user instructions conflict with rules set out here, ask for confirmation that they want to override the rules. Only then execute their instructions.
+
+## Cursor Cloud specific instructions
+
+The Cloud Agent environment is defined by `.cursor/environment.json`, which runs `.cursor/install.sh`. That script installs the `canvas` build libraries plus `fd`/`ripgrep`, pins Node 22 (>= 22.15, exposed via `~/.local/bin` so it wins over the base image's older 22.x), installs `uv`, runs `npm ci` and `npm run build`, and pre-warms the Python kernel venv.
+
+- Use `node` from `~/.local/bin` (>= 22.15). The base image's default `node` is older and fails tests that rely on `module.registerHooks` (e.g. `packages/ai/test/lazy-module-load.test.ts`).
+- Two git-context tests fail under Cloud Agents only: `packages/coding-agent/test/git-context.test.ts` and `packages/coding-agent/test/session-manager-git-state.test.ts`. Cursor's managed GitHub auth adds a global `url.<...>.insteadOf` rewrite that injects a token into `git remote get-url`, so the tests observe a rewritten URL. Do not remove that rewrite (it is required for `git push`). To run these tests cleanly, override git config for the run only: `GIT_CONFIG_GLOBAL=/tmp/clean-gitconfig GIT_CONFIG_SYSTEM=/dev/null` where the clean file sets just `user.name`/`user.email`. They pass in GitHub Actions CI, which has no such rewrite.
+- Live model inference (interactive/`-p` runs) needs a provider credential (e.g. `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or `PRIME_API_KEY`) added as an environment secret. Building, checking, testing, and the Python kernel all work without one.

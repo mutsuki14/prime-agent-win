@@ -1,0 +1,4 @@
+{
+	"name": "Prime Agent",
+	"install": "bash ./.cursor/install.sh"
+}
