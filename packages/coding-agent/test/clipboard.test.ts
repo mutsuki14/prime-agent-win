@@ -136,6 +136,7 @@ describe("copyToClipboard", () => {
 			input: "hello",
 			stdio: ["pipe", "ignore", "ignore"],
 			timeout: 5000,
+			windowsHide: true,
 		});
 		expect(osc52Writes()).toHaveLength(0);
 	});
