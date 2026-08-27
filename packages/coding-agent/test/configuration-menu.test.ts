@@ -85,7 +85,7 @@ describe("ConfigurationMenuComponent", () => {
 		expect(output).toContain("[  Models]");
 		expect(output).toContain("[  MCP Connections]");
 		expect(output).toContain("Anthropic");
-		expect(output).toContain("Custom / 自定义 OpenAI-compatible is first. Or use /provider.");
+		expect(output).toContain("The custom endpoint wizard is first. Or run /provider.");
 		expect(output).not.toContain("Serper (web search)");
 
 		menu.handleInput("a");

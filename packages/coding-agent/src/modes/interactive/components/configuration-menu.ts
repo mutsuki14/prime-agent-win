@@ -134,7 +134,7 @@ export class ConfigurationMenuComponent extends Container implements Focusable {
 				header: tabBar,
 				getHeaderRows,
 				title: "Providers",
-				subtitle: "Custom / 自定义 OpenAI-compatible is first. Or use /provider.",
+				subtitle: "The custom endpoint wizard is first. Or run /provider.",
 				searchPlaceholder: "Search providers (custom / 自定义)",
 			},
 		);

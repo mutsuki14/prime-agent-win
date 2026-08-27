@@ -18,6 +18,13 @@ import { initTheme } from "../src/modes/interactive/theme/theme.js";
 
 const originalOpenAiApiKey = process.env.OPENAI_API_KEY;
 
+function providerNameIndex(output: string, name: string): number {
+	if (name === "OpenAI") {
+		return /OpenAI(?!-compatible)/.exec(output)?.index ?? -1;
+	}
+	return output.indexOf(name);
+}
+
 describe("OAuthSelectorComponent", () => {
 	beforeAll(() => {
 		initTheme("dark");
@@ -87,9 +94,9 @@ describe("OAuthSelectorComponent", () => {
 			);
 
 			const output = stripAnsi(selector.render(120).join("\n"));
-			const primeIndex = output.indexOf("Prime Inference");
-			const anthropicIndex = output.indexOf("Anthropic");
-			const openAiIndex = output.indexOf("OpenAI");
+			const primeIndex = providerNameIndex(output, "Prime Inference");
+			const anthropicIndex = providerNameIndex(output, "Anthropic");
+			const openAiIndex = providerNameIndex(output, "OpenAI");
 
 			expect(primeIndex).toBeLessThan(anthropicIndex);
 			if (configuredProviderLeads) {
@@ -120,10 +127,16 @@ describe("OAuthSelectorComponent", () => {
 		);
 
 		const output = stripAnsi(selector.render(120).join("\n"));
-		expect(output.indexOf(CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME)).toBeGreaterThan(-1);
-		expect(output.indexOf(CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME)).toBeLessThan(output.indexOf("OpenAI"));
-		expect(output.indexOf(CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME)).toBeLessThan(output.indexOf("Prime Inference"));
-		expect(output.indexOf(CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME)).toBeLessThan(output.indexOf("Anthropic"));
+		expect(providerNameIndex(output, CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME)).toBeGreaterThan(-1);
+		expect(providerNameIndex(output, CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME)).toBeLessThan(
+			providerNameIndex(output, "OpenAI"),
+		);
+		expect(providerNameIndex(output, CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME)).toBeLessThan(
+			providerNameIndex(output, "Prime Inference"),
+		);
+		expect(providerNameIndex(output, CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME)).toBeLessThan(
+			providerNameIndex(output, "Anthropic"),
+		);
 	});
 
 	it("matches Custom / 自定义 OpenAI-compatible when searching in Chinese", () => {

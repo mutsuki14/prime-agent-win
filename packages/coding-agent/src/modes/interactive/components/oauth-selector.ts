@@ -121,7 +121,7 @@ export class OAuthSelectorComponent extends Container implements Focusable {
 			subtitle:
 				options.subtitle ??
 				(mode === "login"
-					? "Custom / 自定义 OpenAI-compatible is first. Or use /provider."
+					? "The custom endpoint wizard is first. Or run /provider."
 					: "Choose a credential to remove."),
 		});
 		this.addChild(panel);
