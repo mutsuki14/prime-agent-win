@@ -1,14 +1,17 @@
-import { execSync, spawn } from "child_process";
+import { execFileSync, execSync, spawn } from "child_process";
 import { platform } from "os";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { copyToClipboard } from "../src/utils/clipboard.js";
+import { copyToClipboard, readClipboardText } from "../src/utils/clipboard.js";
 
 const mocks = vi.hoisted(() => {
 	return {
 		clipboard: {
 			setText: vi.fn<(text: string) => Promise<void>>(),
+			getText: vi.fn<() => Promise<string>>(),
+			hasText: vi.fn<() => boolean>(),
 		},
 		execSync: vi.fn(),
+		execFileSync: vi.fn(),
 		spawn: vi.fn(),
 		platform: vi.fn<() => NodeJS.Platform>(),
 		isWaylandSession: vi.fn<() => boolean>(),
@@ -24,7 +27,15 @@ vi.mock("../src/utils/clipboard-native.js", () => {
 vi.mock("child_process", () => {
 	return {
 		execSync: mocks.execSync,
+		execFileSync: mocks.execFileSync,
 		spawn: mocks.spawn,
+	};
+});
+
+vi.mock("../src/utils/windows-process.js", () => {
+	return {
+		POWERSHELL_INVOCATION_ARGS: ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command"],
+		windowsInboxPowerShellPath: () => "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
 	};
 });
 
@@ -41,6 +52,7 @@ vi.mock("../src/utils/clipboard-image.js", () => {
 });
 
 const mockedExecSync = vi.mocked(execSync);
+const mockedExecFileSync = vi.mocked(execFileSync);
 const mockedSpawn = vi.mocked(spawn);
 const mockedPlatform = vi.mocked(platform);
 
@@ -60,7 +72,10 @@ beforeEach(() => {
 	stdoutWrites = [];
 	nativeResolved = false;
 	mocks.clipboard.setText.mockReset();
+	mocks.clipboard.getText.mockReset();
+	mocks.clipboard.hasText.mockReset();
 	mocks.execSync.mockReset();
+	mocks.execFileSync.mockReset();
 	mocks.spawn.mockReset();
 	mocks.platform.mockReset();
 	mocks.isWaylandSession.mockReset();
@@ -144,5 +159,25 @@ describe("copyToClipboard", () => {
 
 		await expect(copyToClipboard("x".repeat(80_000))).rejects.toThrow("Failed to copy to clipboard");
 		expect(osc52Writes()).toHaveLength(0);
+	});
+});
+
+describe("readClipboardText", () => {
+	test("uses the native clipboard when it has text", async () => {
+		mocks.clipboard.hasText.mockReturnValue(true);
+		mocks.clipboard.getText.mockResolvedValue("from-native\r\nline");
+
+		await expect(readClipboardText()).resolves.toBe("from-native\nline");
+		expect(mockedExecSync).not.toHaveBeenCalled();
+		expect(mockedExecFileSync).not.toHaveBeenCalled();
+	});
+
+	test("reads Windows clipboard via PowerShell when native read is empty", async () => {
+		mockedPlatform.mockReturnValue("win32");
+		mocks.clipboard.hasText.mockReturnValue(false);
+		mockedExecFileSync.mockReturnValue("pasted\r\ntext");
+
+		await expect(readClipboardText()).resolves.toBe("pasted\ntext");
+		expect(mockedExecFileSync).toHaveBeenCalled();
 	});
 });

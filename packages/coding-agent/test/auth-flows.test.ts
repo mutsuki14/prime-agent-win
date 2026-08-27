@@ -5,6 +5,7 @@ import type { Component, OverlayHandle, TUI } from "@earendil-works/pi-tui";
 import stripAnsi from "strip-ansi";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthStorage } from "../src/core/auth-storage.js";
+import { CUSTOM_OPENAI_COMPATIBLE_LOGIN_ID } from "../src/core/custom-provider-config.js";
 import type { ModelRegistry } from "../src/core/model-registry.js";
 import { PRIME_INFERENCE_PROVIDER_ID } from "../src/core/prime-inference-auth.js";
 import { ProviderAuthFlows, type ProviderAuthFlowsHost } from "../src/modes/interactive/auth-flows.js";
@@ -205,6 +206,13 @@ describe("ProviderAuthFlows", () => {
 		expect(stripAnsi(overlays[0]?.render(80).join("\n") ?? "")).toContain("Prime Inference");
 		overlays[0]?.handleInput?.("\x1b");
 		await expect(logoutResult).resolves.toBeNull();
+	});
+
+	it("includes a custom OpenAI-compatible provider in /login", () => {
+		const authStorage = AuthStorage.create(authJsonPath, { usePrimeCliConfig: false });
+		const { host } = createHost(authStorage);
+		const options = new ProviderAuthFlows(host).getLoginProviderOptions("api_key");
+		expect(options.some((option) => option.id === CUSTOM_OPENAI_COMPATIBLE_LOGIN_ID)).toBe(true);
 	});
 
 	it("opens login on the requested MCP Connections category", async () => {

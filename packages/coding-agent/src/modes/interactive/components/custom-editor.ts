@@ -31,6 +31,8 @@ export class CustomEditor extends Editor {
 	public onEscape?: () => void;
 	public onCtrlD?: () => void;
 	public onPasteImage?: () => void;
+	public onPasteText?: () => void;
+	public onCopyText?: () => void;
 	public onMoveBelowPrompt?: () => boolean;
 	public onAgentsBack?: () => boolean;
 	/** When set, the returned line is rendered inside the top of the editor box. */
@@ -161,6 +163,16 @@ export class CustomEditor extends Editor {
 		// Check for paste image keybinding
 		if (this.keybindings.matches(data, "app.clipboard.pasteImage")) {
 			this.onPasteImage?.();
+			return;
+		}
+
+		if (this.keybindings.matches(data, "app.clipboard.pasteText")) {
+			this.onPasteText?.();
+			return;
+		}
+
+		if (this.keybindings.matches(data, "tui.input.copy")) {
+			this.onCopyText?.();
 			return;
 		}
 

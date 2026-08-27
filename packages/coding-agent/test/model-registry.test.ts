@@ -1656,4 +1656,19 @@ describe("ModelRegistry", () => {
 			});
 		});
 	});
+
+	test("upsertCustomOpenAIProvider writes models.json and loads the model", () => {
+		const registry = ModelRegistry.create(authStorage, modelsJsonPath);
+		registry.upsertCustomOpenAIProvider({
+			providerId: "ollama",
+			baseUrl: "http://localhost:11434/v1",
+			apiKey: "ollama",
+			modelId: "llama3.1:8b",
+		});
+
+		const models = getModelsForProvider(registry, "ollama");
+		expect(models.map((model) => model.id)).toEqual(["llama3.1:8b"]);
+		expect(models[0]?.api).toBe("openai-completions");
+		expect(registry.getAvailable().some((model) => model.provider === "ollama")).toBe(true);
+	});
 });

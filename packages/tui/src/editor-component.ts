@@ -41,6 +41,9 @@ export interface EditorComponent extends Component {
 	/** Insert text at current cursor position */
 	insertTextAtCursor?(text: string): void;
 
+	/** Insert text using the same path as terminal bracketed paste */
+	pasteText?(text: string): void;
+
 	/**
 	 * Get text with any markers expanded (e.g., paste markers).
 	 * Falls back to getText() if not implemented.

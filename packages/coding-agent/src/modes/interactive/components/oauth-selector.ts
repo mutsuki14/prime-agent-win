@@ -8,6 +8,7 @@ import {
 	TruncatedText,
 } from "@earendil-works/pi-tui";
 import type { AuthStatus, AuthStorage } from "../../../core/auth-storage.js";
+import { CUSTOM_OPENAI_COMPATIBLE_LOGIN_ID } from "../../../core/custom-provider-config.js";
 import { PRIME_INFERENCE_PROVIDER_ID } from "../../../core/prime-inference-auth.js";
 import { theme } from "../theme/theme.js";
 import {
@@ -202,6 +203,8 @@ export class OAuthSelectorComponent extends Container implements Focusable {
 			if (this.mode === "login" && a.id !== b.id) {
 				if (a.id === PRIME_INFERENCE_PROVIDER_ID) return -1;
 				if (b.id === PRIME_INFERENCE_PROVIDER_ID) return 1;
+				if (a.id === CUSTOM_OPENAI_COMPATIBLE_LOGIN_ID) return -1;
+				if (b.id === CUSTOM_OPENAI_COMPATIBLE_LOGIN_ID) return 1;
 			}
 			return compareAuthSelectorProviders(a, b);
 		});

@@ -35,6 +35,7 @@ export interface AppKeybindings {
 	"app.message.moveEarlier": true;
 	"app.message.moveLater": true;
 	"app.clipboard.pasteImage": true;
+	"app.clipboard.pasteText": true;
 	"app.clipboard.copyLoginUrl": true;
 	"app.session.new": true;
 	"app.session.tree": true;
@@ -73,8 +74,21 @@ declare module "@earendil-works/pi-tui" {
 	interface Keybindings extends AppKeybindings {}
 }
 
+export function defaultCopyKeys(platform: NodeJS.Platform = process.platform): KeyId | KeyId[] {
+	return platform === "win32" ? ["ctrl+shift+c", "ctrl+insert"] : "ctrl+c";
+}
+
+export function defaultPasteTextKeys(platform: NodeJS.Platform = process.platform): KeyId | KeyId[] {
+	return platform === "win32" ? ["ctrl+v", "shift+insert"] : [];
+}
+
 export const KEYBINDINGS = {
 	...TUI_KEYBINDINGS,
+	"tui.input.copy": {
+		defaultKeys: defaultCopyKeys(),
+		description: "Copy prompt text to the clipboard",
+		defaultKeyScope: "editor",
+	},
 	"app.interrupt": { defaultKeys: [], description: "Interrupt current operation" },
 	"app.clear": { defaultKeys: "ctrl+c", description: "Interrupt current operation, then exit" },
 	"app.input.clear": { defaultKeys: "escape", description: "Interrupt response or clear prompt" },
@@ -142,6 +156,11 @@ export const KEYBINDINGS = {
 	"app.clipboard.pasteImage": {
 		defaultKeys: process.platform === "win32" ? "alt+v" : "ctrl+v",
 		description: "Paste image from clipboard",
+	},
+	"app.clipboard.pasteText": {
+		defaultKeys: defaultPasteTextKeys(),
+		description: "Paste text from the system clipboard",
+		defaultKeyScope: "editor",
 	},
 	"app.clipboard.copyLoginUrl": {
 		defaultKeys: ["c", "alt+c"],

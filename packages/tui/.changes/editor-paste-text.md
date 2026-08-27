@@ -1,0 +1,1 @@
+- Added `Editor.pasteText()` so the coding agent can insert system-clipboard text through the same path as bracketed paste.

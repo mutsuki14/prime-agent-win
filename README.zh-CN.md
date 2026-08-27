@@ -55,7 +55,9 @@ cd /path/to/project
 /path/to/prime-agent-win/prime-agent.sh
 ```
 
-首次启动后执行 `/login`，或设置 API Key（例如 `ANTHROPIC_API_KEY`）。代理会读写当前目录。
+首次启动后执行 `/login`，或设置 API Key（例如 `ANTHROPIC_API_KEY`）。Ollama、vLLM、LM Studio 或其它 OpenAI 兼容接口选 **Custom OpenAI-compatible**。代理会读写当前目录。
+
+Windows 上：`Ctrl+V` 或 `Shift+Insert` 粘贴，`Ctrl+Shift+C` 或 `Ctrl+Insert` 复制当前输入，`Ctrl+C` 中断。
 
 在 Windows 上，`bash()` 写 PowerShell（`Get-ChildItem`、`Select-String`、`.venv\Scripts\python.exe`）。只有需要 POSIX 语法时才设置 `shellPath`：
 

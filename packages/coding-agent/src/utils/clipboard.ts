@@ -1,7 +1,8 @@
-import { execSync, spawn } from "child_process";
+import { execFileSync, execSync, spawn } from "child_process";
 import { platform } from "os";
 import { isWaylandSession } from "./clipboard-image.js";
 import { clipboard } from "./clipboard-native.js";
+import { POWERSHELL_INVOCATION_ARGS, windowsInboxPowerShellPath } from "./windows-process.js";
 
 type NativeClipboardExecOptions = {
 	input: string;
@@ -130,4 +131,66 @@ export async function copyToClipboard(text: string): Promise<void> {
 	if (!copied) {
 		throw new Error("Failed to copy to clipboard");
 	}
+}
+
+function readClipboardTextViaWindowsPowerShell(): string {
+	const output = execFileSync(
+		windowsInboxPowerShellPath(),
+		[
+			...POWERSHELL_INVOCATION_ARGS,
+			"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $t = Get-Clipboard -Raw; if ($null -eq $t) { '' } else { $t }",
+		],
+		{
+			encoding: "utf8",
+			timeout: 5000,
+			windowsHide: true,
+			stdio: ["ignore", "pipe", "ignore"],
+		},
+	);
+	return output.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
+/**
+ * Read plain text from the system clipboard.
+ * Used by the Windows paste keybinding when the terminal does not inject bracketed paste.
+ */
+export async function readClipboardText(): Promise<string> {
+	const p = platform();
+
+	try {
+		if (clipboard?.getText && (clipboard.hasText === undefined || clipboard.hasText())) {
+			const text = await clipboard.getText();
+			if (typeof text === "string" && text.length > 0) {
+				return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+			}
+		}
+	} catch {
+		// Fall through to platform tools.
+	}
+
+	try {
+		if (p === "darwin") {
+			return execSync("pbpaste", { encoding: "utf8", timeout: 5000, windowsHide: true });
+		}
+		if (p === "win32") {
+			return readClipboardTextViaWindowsPowerShell();
+		}
+		if (process.env.TERMUX_VERSION) {
+			return execSync("termux-clipboard-get", { encoding: "utf8", timeout: 5000, windowsHide: true });
+		}
+		if (isWaylandSession() && process.env.WAYLAND_DISPLAY) {
+			return execSync("wl-paste --no-newline", { encoding: "utf8", timeout: 5000, windowsHide: true });
+		}
+		if (process.env.DISPLAY) {
+			try {
+				return execSync("xclip -selection clipboard -o", { encoding: "utf8", timeout: 5000, windowsHide: true });
+			} catch {
+				return execSync("xsel --clipboard --output", { encoding: "utf8", timeout: 5000, windowsHide: true });
+			}
+		}
+	} catch {
+		// Empty clipboard or missing tool.
+	}
+
+	return "";
 }

@@ -1091,6 +1091,12 @@ export class Editor implements Component, Focusable {
 		this.insertTextAtCursorInternal(text);
 	}
 
+	/** Insert clipboard or programmatic text using the same path as bracketed paste. */
+	pasteText(text: string): void {
+		if (!text) return;
+		this.handlePaste(text);
+	}
+
 	/**
 	 * Normalize text for editor storage:
 	 * - Normalize line endings (\r\n and \r -> \n)
