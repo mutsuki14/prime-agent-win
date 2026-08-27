@@ -29,6 +29,7 @@ import type { Validator } from "typebox/compile";
 import type { TLocalizedValidationError } from "typebox/error";
 import { getAgentDir } from "../config.js";
 import type { AuthSourceToken, AuthStatus, AuthStorage } from "./auth-storage.js";
+import { type CustomOpenAIProviderInput, upsertCustomProviderInModelsJson } from "./custom-provider-config.js";
 import { PRIME_INFERENCE_PROVIDER_ID } from "./prime-inference-auth.js";
 import {
 	fetchAuthorizedPrivatePrimeInferenceModelIds,
@@ -471,6 +472,18 @@ export class ModelRegistry {
 
 	static inMemory(authStorage: AuthStorage): ModelRegistry {
 		return new ModelRegistry(authStorage, undefined);
+	}
+
+	/**
+	 * Write an OpenAI-compatible provider to models.json and reload.
+	 * Used by the /login custom-provider wizard.
+	 */
+	upsertCustomOpenAIProvider(input: CustomOpenAIProviderInput): void {
+		if (!this.modelsJsonPath) {
+			throw new Error("This registry has no models.json path.");
+		}
+		upsertCustomProviderInModelsJson(this.modelsJsonPath, input);
+		this.refresh();
 	}
 
 	/**

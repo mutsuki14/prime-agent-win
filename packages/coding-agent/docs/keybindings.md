@@ -70,7 +70,7 @@ Modifier combinations: `ctrl+shift+x`, `alt+ctrl+x`, `ctrl+shift+alt+x`, `ctrl+1
 
 | Keybinding id | Default | Description |
 |--------|---------|-------------|
-| `tui.input.copy` | `ctrl+c` | Copy selection |
+| `tui.input.copy` | `ctrl+c` (`ctrl+shift+c`, `ctrl+insert` on Windows) | Copy prompt text to the clipboard |
 | `tui.select.up` | `up` | Move selection up |
 | `tui.select.down` | `down` | Move selection down |
 | `tui.select.pageUp` | `pageUp` | Page up in list |
@@ -98,6 +98,7 @@ Modifier combinations: `ctrl+shift+x`, `alt+ctrl+x`, `ctrl+shift+alt+x`, `ctrl+1
 | `app.suspend` | `ctrl+z` (none on Windows) | Suspend to background |
 | `app.editor.external` | `ctrl+g` | Open in external editor (`$VISUAL` or `$EDITOR`) |
 | `app.clipboard.pasteImage` | `ctrl+v` (`alt+v` on Windows) | Paste image from clipboard |
+| `app.clipboard.pasteText` | *(none)* (`ctrl+v`, `shift+insert` on Windows) | Paste text from the system clipboard |
 | `app.clipboard.copyLoginUrl` | `c`, `alt+c` | Copy the sign-in URL from a login dialog |
 
 ### Sessions

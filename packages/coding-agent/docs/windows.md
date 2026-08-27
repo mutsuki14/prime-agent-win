@@ -43,6 +43,23 @@ prime-agent
 
 Child processes (daemon workers, `bash()`, helper tools) are created with `CREATE_NO_WINDOW` / `windowsHide`, so they do not flash extra console windows.
 
+## Custom providers
+
+`/login` includes **Custom OpenAI-compatible**. Enter a provider id, base URL, API key, and model id. Prime Agent writes `~/.prime/agent/models.json`. Local servers such as Ollama can use any API key value (for example `ollama`). Then open `/model` and select the new model.
+
+You can still edit `models.json` by hand. See [Custom Models](models.md).
+
+## Copy and paste
+
+Use Windows Terminal. In the prompt:
+
+- **Paste text:** `Ctrl+V` or `Shift+Insert` (reads the Windows clipboard)
+- **Copy prompt:** `Ctrl+Shift+C` or `Ctrl+Insert` (empty prompt copies the last agent message, same as `/copy`)
+- **Paste image:** `Alt+V`
+- **Interrupt:** `Ctrl+C` (press twice to exit)
+
+Terminal bracketed paste still works when Windows Terminal injects it. All shortcuts are configurable in `~/.prime/agent/keybindings.json`.
+
 ## Default Shell
 
 On Windows, `bash()` and the local shell tool use PowerShell:

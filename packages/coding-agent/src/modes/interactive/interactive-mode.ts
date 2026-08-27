@@ -135,7 +135,7 @@ import {
 import { type TruncationResult, truncateTail } from "../../core/tools/truncate.js";
 import { PRIME_BUTTERFLY_LOGO } from "../../themes/prime-logo.js";
 import { getChangelogPath, parseChangelog } from "../../utils/changelog.js";
-import { copyToClipboard } from "../../utils/clipboard.js";
+import { copyToClipboard, readClipboardText } from "../../utils/clipboard.js";
 import { readClipboardImage } from "../../utils/clipboard-image.js";
 import { parseGitUrl } from "../../utils/git.js";
 import { resizeImage } from "../../utils/image-resize.js";
@@ -3979,6 +3979,12 @@ export class InteractiveMode {
 				if (!customEditor.onPasteImage) {
 					customEditor.onPasteImage = () => this.defaultEditor.onPasteImage?.();
 				}
+				if (!customEditor.onPasteText) {
+					customEditor.onPasteText = () => this.defaultEditor.onPasteText?.();
+				}
+				if (!customEditor.onCopyText) {
+					customEditor.onCopyText = () => this.defaultEditor.onCopyText?.();
+				}
 				if (!customEditor.onMoveBelowPrompt) {
 					customEditor.onMoveBelowPrompt = () => this.defaultEditor.onMoveBelowPrompt?.();
 				}
@@ -4189,6 +4195,12 @@ export class InteractiveMode {
 		this.defaultEditor.onPasteImage = () => {
 			this.handleClipboardImagePaste();
 		};
+		this.defaultEditor.onPasteText = () => {
+			void this.handleClipboardTextPaste();
+		};
+		this.defaultEditor.onCopyText = () => {
+			void this.handleClipboardTextCopy();
+		};
 	}
 
 	private snapshotPromptStashFrom(editor: EditorComponent, text: string): PromptStash {
@@ -4349,6 +4361,34 @@ export class InteractiveMode {
 			}
 		}
 		return images;
+	}
+
+	private async handleClipboardTextPaste(): Promise<void> {
+		try {
+			const text = await readClipboardText();
+			if (!text) {
+				this.showStatus("Clipboard is empty.");
+				return;
+			}
+			this.editor.pasteText?.(text);
+			this.ui.requestRender();
+		} catch (error) {
+			this.showError(error instanceof Error ? error.message : "Failed to paste from clipboard");
+		}
+	}
+
+	private async handleClipboardTextCopy(): Promise<void> {
+		const editorText = this.editor.getText();
+		if (editorText.length > 0) {
+			try {
+				await copyToClipboard(editorText);
+				this.showStatus("Copied prompt to clipboard");
+			} catch (error) {
+				this.showError(error instanceof Error ? error.message : String(error));
+			}
+			return;
+		}
+		await this.handleCopyCommand();
 	}
 
 	private async handleClipboardImagePaste(): Promise<void> {

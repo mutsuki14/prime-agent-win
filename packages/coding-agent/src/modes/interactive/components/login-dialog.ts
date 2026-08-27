@@ -217,6 +217,11 @@ export class LoginDialogComponent extends Container implements Focusable {
 	 * Called by onPrompt callback - show prompt and wait for input
 	 * Note: Does NOT clear content, appends to existing (preserves URL from showAuth)
 	 */
+	showFreshPrompt(message: string, placeholder?: string): Promise<string> {
+		this.startContent();
+		return this.showPrompt(message, placeholder);
+	}
+
 	showPrompt(message: string, placeholder?: string): Promise<string> {
 		this.addSectionSpacer();
 		this.addSectionTitle(message);

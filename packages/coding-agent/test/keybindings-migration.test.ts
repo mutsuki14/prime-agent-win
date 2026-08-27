@@ -3,7 +3,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { ENV_AGENT_DIR } from "../src/config.js";
-import { KeybindingsManager } from "../src/core/keybindings.js";
+import { defaultCopyKeys, defaultPasteTextKeys, KeybindingsManager } from "../src/core/keybindings.js";
 import { runMigrations } from "../src/migrations.js";
 
 describe("keybindings migration", () => {
@@ -111,5 +111,17 @@ describe("keybindings migration", () => {
 			keybindings: ["tui.editor.cursorUp", "app.messages.expand"],
 		});
 		expect(keybindings.getKeys("app.messages.expand")).toEqual(["ctrl+p"]);
+	});
+});
+
+describe("Windows clipboard keybinding defaults", () => {
+	it("uses Ctrl+Shift+C / Ctrl+Insert for copy on Windows", () => {
+		expect(defaultCopyKeys("win32")).toEqual(["ctrl+shift+c", "ctrl+insert"]);
+		expect(defaultCopyKeys("linux")).toBe("ctrl+c");
+	});
+
+	it("uses Ctrl+V / Shift+Insert for text paste on Windows", () => {
+		expect(defaultPasteTextKeys("win32")).toEqual(["ctrl+v", "shift+insert"]);
+		expect(defaultPasteTextKeys("darwin")).toEqual([]);
 	});
 });

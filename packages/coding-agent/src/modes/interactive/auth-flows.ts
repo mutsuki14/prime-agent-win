@@ -2,6 +2,14 @@ import * as path from "node:path";
 import { getProviders, type OAuthProviderId, type OAuthSelectPrompt } from "@earendil-works/pi-ai";
 import type { OverlayHandle, TUI } from "@earendil-works/pi-tui";
 import { getAuthPath, getDocsPath } from "../../config.js";
+import {
+	CUSTOM_OPENAI_COMPATIBLE_LOGIN_ID,
+	CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME,
+	normalizeCustomProviderApiKey,
+	normalizeCustomProviderBaseUrl,
+	normalizeCustomProviderId,
+	normalizeCustomProviderModelId,
+} from "../../core/custom-provider-config.js";
 import type { ModelRegistry } from "../../core/model-registry.js";
 import {
 	checkPrimeAgentTracesAccess,
@@ -172,6 +180,9 @@ export class ProviderAuthFlows {
 
 	loginProvider(providerOption: AuthSelectorProvider): Promise<AuthenticationResult> {
 		const kind = providerOption.category === "service" ? "service" : "provider";
+		if (providerOption.id === CUSTOM_OPENAI_COMPATIBLE_LOGIN_ID) {
+			return this.showCustomOpenAIProviderDialog();
+		}
 		if (providerOption.authType === "oauth") {
 			return this.showLoginDialog(providerOption.id, providerOption.name, kind);
 		}
@@ -255,6 +266,12 @@ export class ProviderAuthFlows {
 				authType: "api_key",
 			});
 		}
+
+		options.push({
+			id: CUSTOM_OPENAI_COMPATIBLE_LOGIN_ID,
+			name: CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME,
+			authType: "api_key",
+		});
 
 		// Serper is a skill credential, not a model provider, so add it manually.
 		options.push({
@@ -726,6 +743,58 @@ export class ProviderAuthFlows {
 			return { status: "cancelled" };
 		} finally {
 			dialog.signal.removeEventListener("abort", onDialogAbort);
+		}
+	}
+
+	private async showCustomOpenAIProviderDialog(): Promise<AuthenticationResult> {
+		const dialog = new LoginDialogComponent(
+			this.host.ui,
+			CUSTOM_OPENAI_COMPATIBLE_LOGIN_ID,
+			() => {},
+			CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME,
+			"Add custom OpenAI-compatible provider",
+		);
+		const handle = showFullPaneOverlay(this.host.ui, dialog, 88);
+		const closeDialog = () => {
+			handle.hide();
+			this.host.ui.requestRender();
+		};
+
+		try {
+			await dialog.showContinueInfo([
+				theme.fg("text", "Add Ollama, vLLM, LM Studio, or any OpenAI-compatible endpoint."),
+				theme.fg("muted", "This writes ~/.prime/agent/models.json and stores the API key."),
+			]);
+
+			const providerId = normalizeCustomProviderId(await dialog.showFreshPrompt("Provider id:", "ollama"));
+			const baseUrl = normalizeCustomProviderBaseUrl(
+				await dialog.showFreshPrompt("Base URL:", "http://localhost:11434/v1"),
+			);
+			const apiKey = normalizeCustomProviderApiKey(await dialog.showFreshPrompt("API key:", "ollama"));
+			const modelId = normalizeCustomProviderModelId(await dialog.showFreshPrompt("Model id:", "llama3.1:8b"));
+
+			this.host.modelRegistry.upsertCustomOpenAIProvider({
+				providerId,
+				baseUrl,
+				apiKey,
+				modelId,
+			});
+			this.host.modelRegistry.authStorage.set(providerId, { type: "api_key", key: apiKey });
+
+			closeDialog();
+			return await this.completeProviderAuthentication(
+				providerId,
+				this.host.modelRegistry.getProviderDisplayName(providerId),
+				"api_key",
+			);
+		} catch (error: unknown) {
+			closeDialog();
+			const errorMsg = error instanceof Error ? error.message : String(error);
+			if (errorMsg !== "Login cancelled") {
+				this.host.showError(`Failed to add custom provider: ${errorMsg}`);
+				return { status: "failed" };
+			}
+			return { status: "cancelled" };
 		}
 	}
 

@@ -1,0 +1,2 @@
+- Added **Custom OpenAI-compatible** to `/login` so Ollama, vLLM, LM Studio, and other OpenAI-compatible endpoints can be configured without editing `models.json` by hand.
+- Added Windows clipboard shortcuts: `Ctrl+V` / `Shift+Insert` paste text, `Ctrl+Shift+C` / `Ctrl+Insert` copy the prompt (`Ctrl+C` still interrupts).
