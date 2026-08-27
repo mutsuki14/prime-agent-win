@@ -16,9 +16,9 @@ This repository is the Windows-native edition. It is not the upstream Prime Inte
 - **Windows-correct runtime paths.** Kernel venv uses `Scripts\python.exe`; uv is installed with the official PowerShell script.
 - **Same RLM kernel on every OS.** Persistent `ipython`, `await rlm("…")` subagents, daemon reattach, `/goal`, `/heartbeat`, `/autonomous`.
 
-## Install from this repository
+## Install
 
-Requires Node.js 20.6.0 or newer (22.8+ to run from source) and npm. On Windows:
+Requires Node.js 22.8.0 or newer and npm. On Windows:
 
 ```powershell
 winget install OpenJS.NodeJS.LTS
@@ -27,16 +27,22 @@ winget install OpenJS.NodeJS.LTS
 Reopen PowerShell, then:
 
 ```powershell
-git clone https://github.com/mutsuki14/prime-agent-win.git
-cd prime-agent-win
-npm ci
+irm https://raw.githubusercontent.com/mutsuki14/prime-agent-win/main/install.ps1 | iex
 ```
 
-Run from the project you want the agent to work in:
+If `raw.githubusercontent.com` is blocked:
+
+```powershell
+irm https://cdn.jsdelivr.net/gh/mutsuki14/prime-agent-win@main/install.ps1 | iex
+```
+
+The script clones this repository to `%LOCALAPPDATA%\Programs\prime-agent-win`, runs `npm ci` in the current window (no extra consoles), and puts `prime-agent` on your user PATH.
+
+Then:
 
 ```powershell
 cd C:\path\to\project
-& C:\path\to\prime-agent-win\prime-agent.ps1
+prime-agent
 ```
 
 macOS / Linux:
@@ -59,16 +65,17 @@ On Windows, write PowerShell in `bash()` (`Get-ChildItem`, `Select-String`, `.ve
 }
 ```
 
-## Published installer (optional)
-
-If you are installing a published tarball instead of this checkout:
+Manual checkout (same result as the installer):
 
 ```powershell
-irm https://app.primeintellect.ai/prime-agent/install.ps1 | iex
+git clone https://github.com/mutsuki14/prime-agent-win.git
+cd prime-agent-win
+npm ci
 ```
 
-```bash
-curl -fsSL https://app.primeintellect.ai/prime-agent/install.sh | sh
+```powershell
+cd C:\path\to\project
+& C:\path\to\prime-agent-win\prime-agent.ps1
 ```
 
 ## Useful commands

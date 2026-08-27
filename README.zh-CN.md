@@ -16,9 +16,9 @@
 - **Windows 路径正确。** Kernel 虚拟环境使用 `Scripts\python.exe`；uv 走官方 PowerShell 安装脚本。
 - **三端同一套 RLM kernel。** 持久 `ipython`、`await rlm("…")` 子代理、daemon 重连、`/goal`、`/heartbeat`、`/autonomous`。
 
-## 从本仓库安装
+## 安装
 
-需要 Node.js 20.6.0 或更高（从源码运行建议 22.8+）以及 npm。Windows：
+需要 Node.js 22.8.0 或更高版本，以及 npm。Windows：
 
 ```powershell
 winget install OpenJS.NodeJS.LTS
@@ -27,16 +27,22 @@ winget install OpenJS.NodeJS.LTS
 重新打开 PowerShell，然后：
 
 ```powershell
-git clone https://github.com/mutsuki14/prime-agent-win.git
-cd prime-agent-win
-npm ci
+irm https://raw.githubusercontent.com/mutsuki14/prime-agent-win/main/install.ps1 | iex
 ```
 
-在你要让代理工作的项目目录里启动：
+如果 `raw.githubusercontent.com` 无法访问：
+
+```powershell
+irm https://cdn.jsdelivr.net/gh/mutsuki14/prime-agent-win@main/install.ps1 | iex
+```
+
+脚本会把本仓库克隆到 `%LOCALAPPDATA%\Programs\prime-agent-win`，在当前窗口执行 `npm ci`（不另开控制台），并把 `prime-agent` 加到用户 PATH。
+
+然后：
 
 ```powershell
 cd C:\path\to\project
-& C:\path\to\prime-agent-win\prime-agent.ps1
+prime-agent
 ```
 
 macOS / Linux：
@@ -59,16 +65,17 @@ cd /path/to/project
 }
 ```
 
-## 已发布安装器（可选）
-
-如果安装的是已发布的 tarball，而不是本仓库源码：
+手动克隆（和安装器结果相同）：
 
 ```powershell
-irm https://app.primeintellect.ai/prime-agent/install.ps1 | iex
+git clone https://github.com/mutsuki14/prime-agent-win.git
+cd prime-agent-win
+npm ci
 ```
 
-```bash
-curl -fsSL https://app.primeintellect.ai/prime-agent/install.sh | sh
+```powershell
+cd C:\path\to\project
+& C:\path\to\prime-agent-win\prime-agent.ps1
 ```
 
 ## 常用命令

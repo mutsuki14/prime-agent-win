@@ -10,10 +10,10 @@ Install the latest stable release on Linux or macOS:
 curl -fsSL https://app.primeintellect.ai/prime-agent/install.sh | sh
 ```
 
-On Windows 11 PowerShell:
+On Windows 11 PowerShell (this repository):
 
 ```powershell
-irm https://app.primeintellect.ai/prime-agent/install.ps1 | iex
+irm https://raw.githubusercontent.com/mutsuki14/prime-agent-win/main/install.ps1 | iex
 ```
 
 Then run it in a project directory:

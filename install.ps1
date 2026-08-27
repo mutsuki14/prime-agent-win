@@ -1,19 +1,15 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Install Prime Agent on Windows 11 PowerShell.
+  Install Prime Agent for Windows from this repository.
 
 .DESCRIPTION
-  Downloads a versioned release tarball, verifies its SHA-256 checksum, and
-  runs npm install -g. Child processes are started with CreateNoWindow so the
-  installer does not flash extra console windows.
+  When a release download URL is configured, installs a verified tarball with
+  npm install -g. Otherwise clones or downloads github.com/mutsuki14/prime-agent-win
+  and runs npm ci. Child processes use CreateNoWindow so no extra consoles flash.
 
 .EXAMPLE
-  irm https://app.primeintellect.ai/prime-agent/install.ps1 | iex
-
-.EXAMPLE
-  $env:PRIME_AGENT_RELEASE_CHANNEL = "beta"
-  irm https://app.primeintellect.ai/prime-agent/install.ps1 | iex
+  irm https://raw.githubusercontent.com/mutsuki14/prime-agent-win/main/install.ps1 | iex
 #>
 
 [CmdletBinding()]
@@ -38,6 +34,8 @@ if ($PrimeAgentDefaultReleaseChannel -eq $PrimeAgentUnconfiguredDefaultReleaseCh
 $PrimeAgentReleaseChannel = if ($env:PRIME_AGENT_RELEASE_CHANNEL) { $env:PRIME_AGENT_RELEASE_CHANNEL } else { $PrimeAgentDefaultReleaseChannel }
 $PrimeAgentPackage = if ($env:PRIME_AGENT_PACKAGE) { $env:PRIME_AGENT_PACKAGE } else { "prime-agent" }
 $PrimeAgentCmd = if ($env:PRIME_AGENT_CMD) { $env:PRIME_AGENT_CMD } else { "prime-agent" }
+$PrimeAgentGitHubRepo = if ($env:PRIME_AGENT_GITHUB_REPO) { $env:PRIME_AGENT_GITHUB_REPO } else { "mutsuki14/prime-agent-win" }
+$PrimeAgentGitHubRef = if ($env:PRIME_AGENT_GITHUB_REF) { $env:PRIME_AGENT_GITHUB_REF } else { "main" }
 $script:DownloadDir = $null
 
 function Write-PrimeError {
@@ -46,7 +44,11 @@ function Write-PrimeError {
 }
 
 function Test-NodeVersion {
-	param([string]$Version)
+	param(
+		[string]$Version,
+		[int]$MinMajor = 20,
+		[int]$MinMinor = 6
+	)
 	$trimmed = $Version.TrimStart("v")
 	if ($trimmed -notmatch '^[0-9]') {
 		return $false
@@ -55,8 +57,7 @@ function Test-NodeVersion {
 	$parts = $core.Split(".")
 	$major = [int]$parts[0]
 	$minor = if ($parts.Length -gt 1) { [int]$parts[1] } else { 0 }
-	$patch = if ($parts.Length -gt 2) { [int]$parts[2] } else { 0 }
-	return ($major -gt 20) -or ($major -eq 20 -and $minor -gt 6) -or ($major -eq 20 -and $minor -eq 6 -and $patch -ge 0)
+	return ($major -gt $MinMajor) -or ($major -eq $MinMajor -and $minor -ge $MinMinor)
 }
 
 function Find-Command {
@@ -73,6 +74,7 @@ function Invoke-HiddenProcess {
 		[Parameter(Mandatory = $true)][string]$FilePath,
 		[string[]]$ArgumentList = @(),
 		[hashtable]$Environment = @{},
+		[string]$WorkingDirectory = "",
 		[switch]$InheritOutput
 	)
 
@@ -90,6 +92,9 @@ function Invoke-HiddenProcess {
 	$psi.CreateNoWindow = $true
 	$psi.RedirectStandardOutput = -not $InheritOutput
 	$psi.RedirectStandardError = -not $InheritOutput
+	if ($WorkingDirectory) {
+		$psi.WorkingDirectory = $WorkingDirectory
+	}
 	foreach ($entry in $Environment.GetEnumerator()) {
 		$psi.Environment[$entry.Key] = [string]$entry.Value
 	}
@@ -167,16 +172,20 @@ function Confirm-YesNo {
 }
 
 function Test-Preflight {
+	param(
+		[int]$MinMajor = 20,
+		[int]$MinMinor = 6
+	)
 	$ok = $true
 	$node = Find-Command "node"
 	if ($node) {
 		$nodeVersion = (& node --version)
-		if (-not (Test-NodeVersion $nodeVersion)) {
-			Write-PrimeError "Prime Agent requires Node.js 20.6.0 or newer. Found $nodeVersion."
+		if (-not (Test-NodeVersion $nodeVersion -MinMajor $MinMajor -MinMinor $MinMinor)) {
+			Write-PrimeError "Prime Agent requires Node.js $MinMajor.$MinMinor.0 or newer. Found $nodeVersion."
 			$ok = $false
 		}
 	} else {
-		Write-PrimeError "Node.js 20.6.0 or newer is required to install Prime Agent."
+		Write-PrimeError "Node.js $MinMajor.$MinMinor.0 or newer is required to install Prime Agent."
 		$ok = $false
 	}
 
@@ -241,22 +250,139 @@ function Install-PrimeAgentPackage {
 	}
 }
 
-function Main {
-	if ($PrimeAgentBaseUrl -eq $PrimeAgentUnconfiguredBaseUrl) {
-		Write-PrimeError "installer download URL is not configured."
-		[Console]::Error.WriteLine("Set PRIME_AGENT_DOWNLOAD_BASE_URL or use the installer published by the release workflow.")
-		exit 1
+function Get-SourceInstallDir {
+	if ($env:PRIME_AGENT_INSTALL_DIR) {
+		return $env:PRIME_AGENT_INSTALL_DIR
+	}
+	return (Join-Path $env:LOCALAPPDATA "Programs\prime-agent-win")
+}
+
+function Add-UserPathEntry {
+	param([string]$Directory)
+	$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+	if (-not $userPath) {
+		$userPath = ""
+	}
+	$parts = @($userPath -split ';' | Where-Object { $_ })
+	if ($parts -contains $Directory) {
+		return
+	}
+	$updated = (@($parts + $Directory) -join ';')
+	[Environment]::SetEnvironmentVariable("Path", $updated, "User")
+	$env:Path = "$Directory;$env:Path"
+}
+
+function Write-PrimeAgentShim {
+	param([string]$InstallDir)
+	$binDir = Join-Path $InstallDir "bin"
+	New-Item -ItemType Directory -Path $binDir -Force | Out-Null
+	$cmdPath = Join-Path $binDir "prime-agent.cmd"
+	$tsxCmd = Join-Path $InstallDir "node_modules\.bin\tsx.cmd"
+	$cli = Join-Path $InstallDir "packages\coding-agent\src\cli.ts"
+	@(
+		"@echo off"
+		"setlocal"
+		"if not exist `"$tsxCmd`" ("
+		"  echo Prime Agent is not installed. Re-run the installer."
+		"  exit /b 1"
+		")"
+		"`"$tsxCmd`" `"$cli`" %*"
+		"exit /b %ERRORLEVEL%"
+	) | Set-Content -LiteralPath $cmdPath -Encoding ASCII
+	Add-UserPathEntry $binDir
+	return $cmdPath
+}
+
+function Install-FromGitHub {
+	$installDir = Get-SourceInstallDir
+	$repoUrl = "https://github.com/$PrimeAgentGitHubRepo.git"
+	$zipUrl = "https://github.com/$PrimeAgentGitHubRepo/archive/refs/heads/$PrimeAgentGitHubRef.zip"
+	$cmdExe = Join-Path $env:SystemRoot "System32\cmd.exe"
+	$git = Find-Command "git"
+
+	Write-Host "Installing from GitHub $PrimeAgentGitHubRepo@$PrimeAgentGitHubRef"
+	Write-Host "Destination: $installDir"
+	Write-Host ""
+
+	if (-not (Confirm-YesNo -Prompt "Install?" -Detail "Download this repository and run npm ci (no extra console windows).")) {
+		Write-Host "Installation cancelled."
+		exit 0
 	}
 
-	Write-Host ""
-	Write-Host "Installing Prime Agent"
-	Write-Host "Windows 11 PowerShell installer"
-	Write-Host ""
+	$parent = Split-Path -Parent $installDir
+	New-Item -ItemType Directory -Path $parent -Force | Out-Null
 
-	if (-not (Test-Preflight)) {
-		exit 1
+	if ($git) {
+		if (Test-Path -LiteralPath (Join-Path $installDir ".git")) {
+			Write-Host "Updating existing checkout..."
+			$result = Invoke-HiddenProcess -FilePath $git -ArgumentList @(
+				"-C", $installDir, "fetch", "--depth", "1", "origin", $PrimeAgentGitHubRef
+			) -InheritOutput
+			if ($result.ExitCode -ne 0) {
+				throw "git fetch failed with exit code $($result.ExitCode)"
+			}
+			$result = Invoke-HiddenProcess -FilePath $git -ArgumentList @(
+				"-C", $installDir, "checkout", "-f", "FETCH_HEAD"
+			) -InheritOutput
+			if ($result.ExitCode -ne 0) {
+				throw "git checkout failed with exit code $($result.ExitCode)"
+			}
+		} else {
+			if (Test-Path -LiteralPath $installDir) {
+				Remove-Item -LiteralPath $installDir -Recurse -Force
+			}
+			Write-Host "Cloning repository..."
+			$result = Invoke-HiddenProcess -FilePath $git -ArgumentList @(
+				"clone", "--depth", "1", "--branch", $PrimeAgentGitHubRef, $repoUrl, $installDir
+			) -InheritOutput
+			if ($result.ExitCode -ne 0) {
+				throw "git clone failed with exit code $($result.ExitCode)"
+			}
+		}
+	} else {
+		$script:DownloadDir = Join-Path ([System.IO.Path]::GetTempPath()) ("prime-agent-install-" + [guid]::NewGuid().ToString("N"))
+		New-Item -ItemType Directory -Path $script:DownloadDir | Out-Null
+		$zipPath = Join-Path $script:DownloadDir "source.zip"
+		Write-Host "Downloading $zipUrl ..."
+		Invoke-WebRequest -UseBasicParsing -Uri $zipUrl -OutFile $zipPath
+		$extractDir = Join-Path $script:DownloadDir "extract"
+		New-Item -ItemType Directory -Path $extractDir | Out-Null
+		Add-Type -AssemblyName System.IO.Compression.FileSystem
+		[System.IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $extractDir)
+		$inner = Get-ChildItem -LiteralPath $extractDir | Select-Object -First 1
+		if (-not $inner) {
+			throw "GitHub zip archive was empty."
+		}
+		if (Test-Path -LiteralPath $installDir) {
+			Remove-Item -LiteralPath $installDir -Recurse -Force
+		}
+		Move-Item -LiteralPath $inner.FullName -Destination $installDir
 	}
 
+	Write-Host "Running npm ci (no extra console windows)..."
+	$result = Invoke-HiddenProcess -FilePath $cmdExe -ArgumentList @(
+		"/d", "/s", "/c", "npm ci --no-fund --no-audit"
+	) -WorkingDirectory $installDir -InheritOutput
+	if ($result.ExitCode -ne 0) {
+		if ($result.Stdout) { Write-Host $result.Stdout }
+		if ($result.Stderr) { [Console]::Error.WriteLine($result.Stderr) }
+		throw "npm ci failed with exit code $($result.ExitCode)"
+	}
+
+	$shim = Write-PrimeAgentShim -InstallDir $installDir
+	Write-Host ""
+	Write-Host "Prime Agent was installed from GitHub."
+	Write-Host "Launcher: $shim"
+	Write-Host "Source:   $installDir"
+	Write-Host ""
+	Write-Host "Open a new PowerShell window, then:"
+	Write-Host "  cd C:\path\to\project"
+	Write-Host "  prime-agent"
+	Write-Host ""
+	Write-Host "This session already has the launcher on PATH. You can run prime-agent now."
+}
+
+function Install-FromTarball {
 	$version = Resolve-PrimeAgentVersion $VersionOrChannel
 	$tarballName = "$PrimeAgentPackage-$version.tgz"
 	$tarballUrl = "$PrimeAgentBaseUrl/releases/v$version/$tarballName"
@@ -280,25 +406,19 @@ function Main {
 	$tarballPath = Join-Path $script:DownloadDir $tarballName
 	$checksumsPath = Join-Path $script:DownloadDir "SHA256SUMS"
 
-	try {
-		Write-Host "Downloading release checksums..."
-		Invoke-WebRequest -UseBasicParsing -Uri "$PrimeAgentBaseUrl/releases/v$version/SHA256SUMS" -OutFile $checksumsPath
-		Write-Host "Downloading Prime Agent v$version..."
-		Invoke-WebRequest -UseBasicParsing -Uri $tarballUrl -OutFile $tarballPath
+	Write-Host "Downloading release checksums..."
+	Invoke-WebRequest -UseBasicParsing -Uri "$PrimeAgentBaseUrl/releases/v$version/SHA256SUMS" -OutFile $checksumsPath
+	Write-Host "Downloading Prime Agent v$version..."
+	Invoke-WebRequest -UseBasicParsing -Uri $tarballUrl -OutFile $tarballPath
 
-		Write-Host "Verifying SHA-256..."
-		$expected = Get-SelectedChecksum -ChecksumsPath $checksumsPath -TarballName $tarballName
-		$actual = (Get-FileHash -LiteralPath $tarballPath -Algorithm SHA256).Hash.ToLowerInvariant()
-		if ($actual -ne $expected.ToLowerInvariant()) {
-			throw "SHA-256 mismatch for $tarballName (expected $expected, got $actual)"
-		}
-
-		Install-PrimeAgentPackage -TarballPath $tarballPath -BootstrapKernel $bootstrapKernel
-	} finally {
-		if ($script:DownloadDir -and (Test-Path -LiteralPath $script:DownloadDir)) {
-			Remove-Item -LiteralPath $script:DownloadDir -Recurse -Force -ErrorAction SilentlyContinue
-		}
+	Write-Host "Verifying SHA-256..."
+	$expected = Get-SelectedChecksum -ChecksumsPath $checksumsPath -TarballName $tarballName
+	$actual = (Get-FileHash -LiteralPath $tarballPath -Algorithm SHA256).Hash.ToLowerInvariant()
+	if ($actual -ne $expected.ToLowerInvariant()) {
+		throw "SHA-256 mismatch for $tarballName (expected $expected, got $actual)"
 	}
+
+	Install-PrimeAgentPackage -TarballPath $tarballPath -BootstrapKernel $bootstrapKernel
 
 	$installed = Find-Command $PrimeAgentCmd
 	Write-Host ""
@@ -315,9 +435,36 @@ function Main {
 	}
 }
 
+function Main {
+	Write-Host ""
+	Write-Host "Installing Prime Agent"
+	Write-Host "Windows 11 PowerShell installer"
+	Write-Host ""
+
+	$useTarball = $PrimeAgentBaseUrl -ne $PrimeAgentUnconfiguredBaseUrl
+	if ($useTarball) {
+		if (-not (Test-Preflight -MinMajor 20 -MinMinor 6)) {
+			exit 1
+		}
+		Install-FromTarball
+		return
+	}
+
+	Write-Host "No published tarball URL is configured. Installing this GitHub repository instead."
+	Write-Host ""
+	if (-not (Test-Preflight -MinMajor 22 -MinMinor 8)) {
+		exit 1
+	}
+	Install-FromGitHub
+}
+
 try {
 	Main
 } catch {
 	Write-PrimeError $_.Exception.Message
 	exit 1
+} finally {
+	if ($script:DownloadDir -and (Test-Path -LiteralPath $script:DownloadDir)) {
+		Remove-Item -LiteralPath $script:DownloadDir -Recurse -Force -ErrorAction SilentlyContinue
+	}
 }

@@ -4,27 +4,19 @@ Prime Agent runs natively in Windows 11 PowerShell and Windows Terminal. Git Bas
 
 ## Install
 
-In Windows PowerShell 5.1 or PowerShell 7:
+`https://app.primeintellect.ai/prime-agent/install.ps1` is not published (404). Use this repository:
 
 ```powershell
-irm https://app.primeintellect.ai/prime-agent/install.ps1 | iex
+irm https://raw.githubusercontent.com/mutsuki14/prime-agent-win/main/install.ps1 | iex
 ```
 
-Beta (latest `main`):
+If `raw.githubusercontent.com` is blocked:
 
 ```powershell
-$env:PRIME_AGENT_RELEASE_CHANNEL = "beta"
-irm https://app.primeintellect.ai/prime-agent/install.ps1 | iex
+irm https://cdn.jsdelivr.net/gh/mutsuki14/prime-agent-win@main/install.ps1 | iex
 ```
 
-Or download the script and pass a channel or version:
-
-```powershell
-irm https://app.primeintellect.ai/prime-agent/install.ps1 -OutFile "$env:TEMP\prime-agent-install.ps1"
-& "$env:TEMP\prime-agent-install.ps1" beta
-```
-
-The installer requires Node.js 20.6.0 or newer and npm. If they are missing:
+Requires Node.js 22.8.0 or newer and npm. If they are missing:
 
 ```powershell
 winget install OpenJS.NodeJS.LTS
@@ -32,7 +24,9 @@ winget install OpenJS.NodeJS.LTS
 
 Then reopen PowerShell and run the installer again.
 
-Start Prime Agent from the project directory:
+The installer clones [mutsuki14/prime-agent-win](https://github.com/mutsuki14/prime-agent-win) to `%LOCALAPPDATA%\Programs\prime-agent-win`, runs `npm ci` with `CreateNoWindow`, and adds `prime-agent` to your user PATH.
+
+Start from the project directory:
 
 ```powershell
 cd C:\path\to\project
