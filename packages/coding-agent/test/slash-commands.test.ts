@@ -57,6 +57,21 @@ describe("built-in slash commands", () => {
 		expect(builtinSlashCommandTakesArgument("side")).toBe(true);
 	});
 
+	test("exposes /login custom and /provider for the custom OpenAI-compatible wizard", () => {
+		expect(BUILTIN_SLASH_COMMANDS.find((command) => command.name === "login")).toMatchObject({
+			description: "Configure provider authentication or add a custom OpenAI-compatible provider",
+			argumentHint: "[custom]",
+			takesArgument: true,
+		});
+		expect(BUILTIN_SLASH_COMMANDS.find((command) => command.name === "provider")).toMatchObject({
+			description: "Add a custom OpenAI-compatible provider (Ollama, vLLM, LM Studio)",
+			aliases: ["custom"],
+		});
+		expect(BUILTIN_SLASH_COMMANDS.find((command) => command.name === "custom")).toBeUndefined();
+		expect(resolveBuiltinSlashCommandName("custom")).toBe("provider");
+		expect(builtinSlashCommandTakesArgument("login")).toBe(true);
+	});
+
 	test("describes /mcp as the MCP Connections menu entry point", () => {
 		expect(BUILTIN_SLASH_COMMANDS.find((command) => command.name === "mcp")).toMatchObject({
 			description: "Open MCP Connections or manage MCP integrations",
@@ -102,6 +117,7 @@ describe("slash command aliases", () => {
 		expect(BUILTIN_SLASH_COMMANDS.find((command) => command.name === "clear")).toBeUndefined();
 		expect(BUILTIN_SLASH_COMMANDS.find((command) => command.name === "usage")).toBeUndefined();
 		expect(BUILTIN_SLASH_COMMANDS.find((command) => command.name === "rename")).toBeUndefined();
+		expect(BUILTIN_SLASH_COMMANDS.find((command) => command.name === "custom")).toBeUndefined();
 		expect(BUILTIN_SLASH_COMMANDS.find((command) => command.name === "new")).toMatchObject({
 			description: "Start a new session, optionally named and/or with an initial prompt",
 			argumentHint: '[--name "session name" --] [prompt]',

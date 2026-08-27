@@ -136,7 +136,16 @@ const CANONICAL_BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	{ name: "fork", description: "Create a new fork from a previous user message" },
 	{ name: "clone", description: "Duplicate the current session at the current position" },
 	{ name: "tree", description: "Navigate session tree (switch branches)" },
-	{ name: "login", description: "Configure provider authentication or add a custom OpenAI-compatible provider" },
+	{
+		name: "login",
+		description: "Configure provider authentication or add a custom OpenAI-compatible provider",
+		argumentHint: "[custom]",
+		takesArgument: true,
+	},
+	{
+		name: "provider",
+		description: "Add a custom OpenAI-compatible provider (Ollama, vLLM, LM Studio)",
+	},
 	{ name: "logout", description: "Remove provider authentication" },
 	{
 		name: "mcp",
@@ -208,6 +217,7 @@ const BUILTIN_SLASH_COMMAND_ALIASES: ReadonlyArray<BuiltinSlashCommandAlias> = [
 	{ name: "thinking", aliasFor: "effort" },
 	{ name: "rename", aliasFor: "name" },
 	{ name: "side", aliasFor: "btw" },
+	{ name: "custom", aliasFor: "provider" },
 ];
 
 function buildBuiltinSlashCommands(): ReadonlyArray<BuiltinSlashCommand> {

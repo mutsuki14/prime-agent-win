@@ -37,7 +37,8 @@ Type `/` in the editor to open command completion. Extensions can register custo
 
 | Command | Description |
 |---------|-------------|
-| `/login`, `/logout` | Manage OAuth or API-key credentials |
+| `/login [custom]`, `/logout` | Manage OAuth or API-key credentials; `/login custom` adds an OpenAI-compatible endpoint |
+| `/provider` | Add a custom OpenAI-compatible provider (Ollama, vLLM, LM Studio) |
 | `/model` | Switch models |
 | `/effort` | Set the reasoning/thinking level |
 | `/scoped-models` | Enable/disable models for Ctrl+P cycling |

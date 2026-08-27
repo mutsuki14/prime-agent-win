@@ -5,7 +5,10 @@ import type { Component, OverlayHandle, TUI } from "@earendil-works/pi-tui";
 import stripAnsi from "strip-ansi";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthStorage } from "../src/core/auth-storage.js";
-import { CUSTOM_OPENAI_COMPATIBLE_LOGIN_ID } from "../src/core/custom-provider-config.js";
+import {
+	CUSTOM_OPENAI_COMPATIBLE_LOGIN_ID,
+	CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME,
+} from "../src/core/custom-provider-config.js";
 import type { ModelRegistry } from "../src/core/model-registry.js";
 import { PRIME_INFERENCE_PROVIDER_ID } from "../src/core/prime-inference-auth.js";
 import { ProviderAuthFlows, type ProviderAuthFlowsHost } from "../src/modes/interactive/auth-flows.js";
@@ -212,7 +215,13 @@ describe("ProviderAuthFlows", () => {
 		const authStorage = AuthStorage.create(authJsonPath, { usePrimeCliConfig: false });
 		const { host } = createHost(authStorage);
 		const options = new ProviderAuthFlows(host).getLoginProviderOptions("api_key");
-		expect(options.some((option) => option.id === CUSTOM_OPENAI_COMPATIBLE_LOGIN_ID)).toBe(true);
+		const custom = options.find((option) => option.id === CUSTOM_OPENAI_COMPATIBLE_LOGIN_ID);
+		expect(custom).toEqual({
+			id: CUSTOM_OPENAI_COMPATIBLE_LOGIN_ID,
+			name: CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME,
+			authType: "api_key",
+		});
+		expect(custom?.name).toContain("自定义");
 	});
 
 	it("opens login on the requested MCP Connections category", async () => {

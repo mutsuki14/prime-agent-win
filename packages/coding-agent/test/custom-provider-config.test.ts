@@ -4,6 +4,8 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
 	CUSTOM_OPENAI_COMPATIBLE_LOGIN_ID,
+	CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME,
+	isCustomOpenAICompatibleLoginArgs,
 	normalizeCustomProviderApiKey,
 	normalizeCustomProviderBaseUrl,
 	normalizeCustomProviderId,
@@ -25,6 +27,22 @@ describe("custom provider config", () => {
 		if (existsSync(tempDir)) {
 			rmSync(tempDir, { recursive: true, force: true });
 		}
+	});
+
+	it("uses a bilingual login label that matches Chinese search", () => {
+		expect(CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME).toContain("Custom");
+		expect(CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME).toContain("自定义");
+		expect(CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME).toContain("OpenAI-compatible");
+	});
+
+	it("recognizes /login custom arguments", () => {
+		expect(isCustomOpenAICompatibleLoginArgs("custom")).toBe(true);
+		expect(isCustomOpenAICompatibleLoginArgs("Custom OpenAI Compatible")).toBe(true);
+		expect(isCustomOpenAICompatibleLoginArgs("openai-compatible")).toBe(true);
+		expect(isCustomOpenAICompatibleLoginArgs("自定义")).toBe(true);
+		expect(isCustomOpenAICompatibleLoginArgs("自定义供应商")).toBe(true);
+		expect(isCustomOpenAICompatibleLoginArgs("anthropic")).toBe(false);
+		expect(isCustomOpenAICompatibleLoginArgs("")).toBe(false);
 	});
 
 	it("normalizes a valid provider id", () => {

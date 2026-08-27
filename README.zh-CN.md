@@ -56,7 +56,7 @@ cd /path/to/project
 /path/to/prime-agent-win/prime-agent.sh --dist
 ```
 
-首次启动后执行 `/login`，或设置 API Key（例如 `ANTHROPIC_API_KEY`）。Ollama、vLLM、LM Studio 或其它 OpenAI 兼容接口选 **Custom OpenAI-compatible**。代理会读写当前目录。
+首次启动后执行 `/login`，或设置 API Key（例如 `ANTHROPIC_API_KEY`）。Providers 列表第一项就是 **Custom / 自定义 OpenAI-compatible**；也可以直接输入 `/provider` 或 `/login custom` 添加 Ollama、vLLM、LM Studio 或其它 OpenAI 兼容接口。代理会读写当前目录。
 
 Windows 上：`Ctrl+V` 或 `Shift+Insert` 粘贴，`Ctrl+Shift+C` 或 `Ctrl+Insert` 复制当前输入，`Ctrl+C` 中断。
 

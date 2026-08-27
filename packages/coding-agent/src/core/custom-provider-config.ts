@@ -2,7 +2,27 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "
 import { dirname, join } from "path";
 
 export const CUSTOM_OPENAI_COMPATIBLE_LOGIN_ID = "__custom_openai_compatible__";
-export const CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME = "Custom OpenAI-compatible";
+export const CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME = "Custom / 自定义 OpenAI-compatible";
+
+const CUSTOM_OPENAI_COMPATIBLE_LOGIN_ARGS = new Set([
+	"custom",
+	"custom-openai",
+	"custom-openai-compatible",
+	"openai-compatible",
+	"openai_compatible",
+	"provider",
+	"自定义",
+	"自定义供应商",
+]);
+
+export function isCustomOpenAICompatibleLoginArgs(args: string): boolean {
+	const trimmed = args.trim();
+	if (!trimmed) {
+		return false;
+	}
+	const collapsed = trimmed.toLowerCase().replace(/[\s_]+/g, "-");
+	return CUSTOM_OPENAI_COMPATIBLE_LOGIN_ARGS.has(collapsed) || CUSTOM_OPENAI_COMPATIBLE_LOGIN_ARGS.has(trimmed);
+}
 
 const PROVIDER_ID_PATTERN = /^[a-z][a-z0-9-]*$/;
 

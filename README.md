@@ -56,7 +56,7 @@ cd /path/to/project
 /path/to/prime-agent-win/prime-agent.sh --dist
 ```
 
-On first launch, run `/login` or set an API key such as `ANTHROPIC_API_KEY`. Choose **Custom OpenAI-compatible** for Ollama, vLLM, LM Studio, or any OpenAI-compatible endpoint. The agent reads and writes the current directory.
+On first launch, run `/login` or set an API key such as `ANTHROPIC_API_KEY`. **Custom / 自定义 OpenAI-compatible** is first in the Providers list; `/provider` or `/login custom` opens the wizard directly for Ollama, vLLM, LM Studio, or any OpenAI-compatible endpoint. The agent reads and writes the current directory.
 
 On Windows, paste with `Ctrl+V` or `Shift+Insert`, copy the prompt with `Ctrl+Shift+C` or `Ctrl+Insert`, and interrupt with `Ctrl+C`.
 

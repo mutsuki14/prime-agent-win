@@ -134,8 +134,8 @@ export class ConfigurationMenuComponent extends Container implements Focusable {
 				header: tabBar,
 				getHeaderRows,
 				title: "Providers",
-				subtitle: "Connect with a subscription or API key.",
-				searchPlaceholder: "Search providers",
+				subtitle: "Custom / 自定义 OpenAI-compatible is first. Or use /provider.",
+				searchPlaceholder: "Search providers (custom / 自定义)",
 			},
 		);
 		const models = new ModelSelectorComponent(

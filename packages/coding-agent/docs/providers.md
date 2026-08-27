@@ -233,7 +233,7 @@ Or set `GOOGLE_APPLICATION_CREDENTIALS` to a service account key file.
 
 ## Custom Providers
 
-**Via /login:** Choose **Custom OpenAI-compatible**, then enter a provider id, base URL, API key, and model id. Prime Agent writes `~/.prime/agent/models.json`.
+**Via /login or /provider:** Open `/login` and choose **Custom / 自定义 OpenAI-compatible** (first in the Providers list), or run `/provider` / `/login custom`. Enter a provider id, base URL, API key, and model id. Prime Agent writes `~/.prime/agent/models.json`.
 
 **Via models.json:** Add Ollama, LM Studio, vLLM, or any provider that speaks a supported API (OpenAI Completions, OpenAI Responses, Anthropic Messages, Google Generative AI). See [models.md](models.md).
 

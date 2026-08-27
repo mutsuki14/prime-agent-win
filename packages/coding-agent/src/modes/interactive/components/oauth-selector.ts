@@ -120,7 +120,9 @@ export class OAuthSelectorComponent extends Container implements Focusable {
 			title: options.title ?? (mode === "login" ? "Providers" : "Saved Credentials"),
 			subtitle:
 				options.subtitle ??
-				(mode === "login" ? "Connect with a subscription or API key." : "Choose a credential to remove."),
+				(mode === "login"
+					? "Custom / 自定义 OpenAI-compatible is first. Or use /provider."
+					: "Choose a credential to remove."),
 		});
 		this.addChild(panel);
 		if (options.header) {
@@ -230,6 +232,9 @@ export class OAuthSelectorComponent extends Container implements Focusable {
 	}
 
 	private getProviderSortRank(provider: AuthSelectorProvider): number {
+		if (this.mode === "login" && provider.id === CUSTOM_OPENAI_COMPATIBLE_LOGIN_ID) {
+			return -1;
+		}
 		if (this.isProviderConfigured(provider)) {
 			return 0;
 		}

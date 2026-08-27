@@ -122,7 +122,7 @@ For each built-in provider, Prime Agent maintains a list of tool-capable models,
 
 See [docs/providers.md](docs/providers.md) for detailed setup instructions.
 
-**Custom providers & models:** In `/login`, choose **Custom OpenAI-compatible**, or add providers via `~/.prime/agent/models.json` if they speak a supported API (OpenAI, Anthropic, Google). For custom APIs or OAuth, use extensions. See [docs/models.md](docs/models.md) and [docs/custom-provider.md](docs/custom-provider.md).
+**Custom providers & models:** Run `/provider` or `/login custom`, or choose **Custom / 自定义 OpenAI-compatible** at the top of `/login`. You can also add providers via `~/.prime/agent/models.json` if they speak a supported API (OpenAI, Anthropic, Google). For custom APIs or OAuth, use extensions. See [docs/models.md](docs/models.md) and [docs/custom-provider.md](docs/custom-provider.md).
 
 ## Interactive Mode
 

@@ -1,0 +1,1 @@
+- Pinned Custom / 自定义 OpenAI-compatible at the top of `/login` and added `/provider` plus `/login custom` to open the wizard directly.

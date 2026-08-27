@@ -178,10 +178,14 @@ export class ProviderAuthFlows {
 		});
 	}
 
+	runCustomOpenAIProviderLogin(): Promise<AuthenticationResult> {
+		return this.showCustomOpenAIProviderDialog();
+	}
+
 	loginProvider(providerOption: AuthSelectorProvider): Promise<AuthenticationResult> {
 		const kind = providerOption.category === "service" ? "service" : "provider";
 		if (providerOption.id === CUSTOM_OPENAI_COMPATIBLE_LOGIN_ID) {
-			return this.showCustomOpenAIProviderDialog();
+			return this.runCustomOpenAIProviderLogin();
 		}
 		if (providerOption.authType === "oauth") {
 			return this.showLoginDialog(providerOption.id, providerOption.name, kind);

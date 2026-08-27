@@ -81,6 +81,7 @@ import {
 	DEFAULT_HEARTBEAT_DELIVERY_MODE,
 	parseHeartbeatCommand,
 } from "../../core/cron-jobs.js";
+import { isCustomOpenAICompatibleLoginArgs } from "../../core/custom-provider-config.js";
 import type {
 	AutocompleteProviderFactory,
 	ContextUsage,
@@ -4840,9 +4841,18 @@ export class InteractiveMode {
 					await this.showTreeSelector();
 					return;
 				}
-				if (commandName === "login" && !commandArgs) {
+				if (commandName === "login") {
 					this.editor.setText("");
-					await this.showConfigurationMenu("providers");
+					await this.handleLoginCommand(commandArgs);
+					return;
+				}
+				if (commandName === "provider") {
+					if (commandArgs) {
+						this.showError("Usage: /provider");
+						return;
+					}
+					this.editor.setText("");
+					await this.handleCustomOpenAIProviderCommand();
 					return;
 				}
 				if (commandName === "logout" && !commandArgs) {
@@ -8087,6 +8097,26 @@ export class InteractiveMode {
 
 	private showModelSelector(initialSearchInput?: string): void {
 		void this.showConfigurationMenu("models", initialSearchInput);
+	}
+
+	private async handleLoginCommand(args: string): Promise<void> {
+		const trimmed = args.trim();
+		if (!trimmed) {
+			await this.showConfigurationMenu("providers");
+			return;
+		}
+		if (isCustomOpenAICompatibleLoginArgs(trimmed)) {
+			await this.handleCustomOpenAIProviderCommand();
+			return;
+		}
+		this.showError("Usage: /login [custom]");
+	}
+
+	private async handleCustomOpenAIProviderCommand(): Promise<void> {
+		const authResult = await this.createAuthFlows().runCustomOpenAIProviderLogin();
+		if (authResult.status === "success") {
+			await this.prepareForModelSelectionAfterLogin(authResult);
+		}
 	}
 
 	private showConfigurationMenu(initialTab: ConfigurationMenuTab, initialModelSearch?: string): Promise<void> {

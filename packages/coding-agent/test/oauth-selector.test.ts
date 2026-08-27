@@ -2,6 +2,10 @@ import { setKeybindings } from "@earendil-works/pi-tui";
 import stripAnsi from "strip-ansi";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { type AuthStatus, AuthStorage } from "../src/core/auth-storage.js";
+import {
+	CUSTOM_OPENAI_COMPATIBLE_LOGIN_ID,
+	CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME,
+} from "../src/core/custom-provider-config.js";
 import { KeybindingsManager } from "../src/core/keybindings.js";
 import { PRIME_INFERENCE_PROVIDER_ID } from "../src/core/prime-inference-auth.js";
 import { BUILT_IN_PROVIDER_DISPLAY_NAMES } from "../src/core/provider-display-names.js";
@@ -94,6 +98,57 @@ describe("OAuthSelectorComponent", () => {
 				expect(primeIndex).toBeLessThan(openAiIndex);
 			}
 		}
+	});
+
+	it("pins Custom / 自定义 OpenAI-compatible first even when other providers are configured", () => {
+		process.env.OPENAI_API_KEY = "test-openai-key";
+		const selector = new OAuthSelectorComponent(
+			"login",
+			AuthStorage.inMemory(),
+			[
+				{ id: "anthropic", name: "Anthropic", authType: "oauth" },
+				{ id: "openai", name: "OpenAI", authType: "api_key" },
+				{ id: PRIME_INFERENCE_PROVIDER_ID, name: "Prime Inference", authType: "api_key" },
+				{
+					id: CUSTOM_OPENAI_COMPATIBLE_LOGIN_ID,
+					name: CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME,
+					authType: "api_key",
+				},
+			],
+			() => {},
+			() => {},
+		);
+
+		const output = stripAnsi(selector.render(120).join("\n"));
+		expect(output.indexOf(CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME)).toBeGreaterThan(-1);
+		expect(output.indexOf(CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME)).toBeLessThan(output.indexOf("OpenAI"));
+		expect(output.indexOf(CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME)).toBeLessThan(output.indexOf("Prime Inference"));
+		expect(output.indexOf(CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME)).toBeLessThan(output.indexOf("Anthropic"));
+	});
+
+	it("matches Custom / 自定义 OpenAI-compatible when searching in Chinese", () => {
+		const selector = new OAuthSelectorComponent(
+			"login",
+			AuthStorage.inMemory(),
+			[
+				{ id: "anthropic", name: "Anthropic", authType: "oauth" },
+				{
+					id: CUSTOM_OPENAI_COMPATIBLE_LOGIN_ID,
+					name: CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME,
+					authType: "api_key",
+				},
+			],
+			() => {},
+			() => {},
+		);
+
+		for (const character of "自定义") {
+			selector.handleInput(character);
+		}
+
+		const output = stripAnsi(selector.render(120).join("\n"));
+		expect(output).toContain(CUSTOM_OPENAI_COMPATIBLE_LOGIN_NAME);
+		expect(output).not.toContain("Anthropic");
 	});
 
 	it("preserves auth type when selecting duplicate provider ids", () => {

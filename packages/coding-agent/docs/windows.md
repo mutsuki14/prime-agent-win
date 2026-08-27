@@ -45,7 +45,7 @@ Child processes (daemon workers, `bash()`, helper tools) are created with `CREAT
 
 ## Custom providers
 
-`/login` includes **Custom OpenAI-compatible**. Enter a provider id, base URL, API key, and model id. Prime Agent writes `~/.prime/agent/models.json`. Local servers such as Ollama can use any API key value (for example `ollama`). Then open `/model` and select the new model.
+`/login` pins **Custom / 自定义 OpenAI-compatible** at the top of Providers. You can also run `/provider` or `/login custom` to open the wizard directly. Enter a provider id, base URL, API key, and model id. Prime Agent writes `~/.prime/agent/models.json`. Local servers such as Ollama can use any API key value (for example `ollama`). Then open `/model` and select the new model.
 
 You can still edit `models.json` by hand. See [Custom Models](models.md).
 

@@ -1,6 +1,6 @@
 # Custom Models
 
-Add custom providers and models (Ollama, vLLM, LM Studio, proxies) from `/login` → **Custom OpenAI-compatible**, or by editing `~/.prime/agent/models.json`.
+Add custom providers and models (Ollama, vLLM, LM Studio, proxies) from `/provider`, `/login custom`, or `/login` → **Custom / 自定义 OpenAI-compatible**, or by editing `~/.prime/agent/models.json`.
 
 ## Table of Contents
 
