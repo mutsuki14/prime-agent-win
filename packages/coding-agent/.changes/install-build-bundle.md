@@ -1,0 +1,1 @@
+- Fixed the Windows GitHub installer so it builds workspace packages and launches the bundled CLI instead of failing with `ERR_MODULE_NOT_FOUND` for `@earendil-works/pi-agent-core`.

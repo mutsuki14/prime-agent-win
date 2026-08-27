@@ -36,7 +36,7 @@ irm https://raw.githubusercontent.com/mutsuki14/prime-agent-win/main/install.ps1
 irm https://cdn.jsdelivr.net/gh/mutsuki14/prime-agent-win@main/install.ps1 | iex
 ```
 
-脚本会把本仓库克隆到 `%LOCALAPPDATA%\Programs\prime-agent-win`，在当前窗口执行 `npm ci`（不另开控制台），并把 `prime-agent` 加到用户 PATH。
+脚本会把本仓库克隆到 `%LOCALAPPDATA%\Programs\prime-agent-win`，在当前窗口执行 `npm ci` 和 `npm run build`（不另开控制台），并把 `prime-agent` 加到用户 PATH。工作区包导出的是 git 里没有的 `dist/`，所以必须构建。
 
 然后：
 
@@ -51,8 +51,9 @@ macOS / Linux：
 git clone https://github.com/mutsuki14/prime-agent-win.git
 cd prime-agent-win
 npm ci
+npm run build
 cd /path/to/project
-/path/to/prime-agent-win/prime-agent.sh
+/path/to/prime-agent-win/prime-agent.sh --dist
 ```
 
 首次启动后执行 `/login`，或设置 API Key（例如 `ANTHROPIC_API_KEY`）。代理会读写当前目录。
@@ -71,6 +72,7 @@ cd /path/to/project
 git clone https://github.com/mutsuki14/prime-agent-win.git
 cd prime-agent-win
 npm ci
+npm run build
 ```
 
 ```powershell

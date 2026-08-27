@@ -24,12 +24,20 @@ winget install OpenJS.NodeJS.LTS
 
 Then reopen PowerShell and run the installer again.
 
-The installer clones [mutsuki14/prime-agent-win](https://github.com/mutsuki14/prime-agent-win) to `%LOCALAPPDATA%\Programs\prime-agent-win`, runs `npm ci` with `CreateNoWindow`, and adds `prime-agent` to your user PATH.
+The installer clones [mutsuki14/prime-agent-win](https://github.com/mutsuki14/prime-agent-win) to `%LOCALAPPDATA%\Programs\prime-agent-win`, runs `npm ci` and `npm run build` with `CreateNoWindow`, and adds `prime-agent` to your user PATH. The launcher starts the bundled CLI (`packages/coding-agent/dist/bundle/cli.js`).
 
 Start from the project directory:
 
 ```powershell
 cd C:\path\to\project
+prime-agent
+```
+
+If an older install only ran `npm ci`, `prime-agent` fails with `ERR_MODULE_NOT_FOUND` for `@earendil-works/pi-agent-core`. Build the existing tree, or re-run the installer:
+
+```powershell
+cd $env:LOCALAPPDATA\Programs\prime-agent-win
+npm run build
 prime-agent
 ```
 

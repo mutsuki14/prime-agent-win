@@ -16,6 +16,14 @@ if (!installerPs1.includes("CreateNoWindow")) {
 	console.error("Installer render check failed: install.ps1 must hide Windows child consoles.");
 	process.exit(1);
 }
+if (!installerPs1.includes("npm run build")) {
+	console.error("Installer render check failed: GitHub installs must build workspace packages after npm ci.");
+	process.exit(1);
+}
+if (!installerPs1.includes("dist\\bundle\\cli.js") && !installerPs1.includes("dist/bundle/cli.js")) {
+	console.error("Installer render check failed: the Windows shim must launch the bundled CLI.");
+	process.exit(1);
+}
 
 const installerSource = readFileSync("install.sh", "utf-8");
 const mainCall = '\nmain "$@"';

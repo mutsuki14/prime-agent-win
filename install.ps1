@@ -5,8 +5,10 @@
 
 .DESCRIPTION
   When a release download URL is configured, installs a verified tarball with
-  npm install -g. Otherwise clones or downloads github.com/mutsuki14/prime-agent-win
-  and runs npm ci. Child processes use CreateNoWindow so no extra consoles flash.
+  npm install -g. Otherwise clones or downloads github.com/mutsuki14/prime-agent-win,
+  runs npm ci, then npm run build so workspace packages have dist/. The launcher
+  starts packages/coding-agent/dist/bundle/cli.js. Child processes use
+  CreateNoWindow so no extra consoles flash.
 
 .EXAMPLE
   irm https://raw.githubusercontent.com/mutsuki14/prime-agent-win/main/install.ps1 | iex
@@ -277,16 +279,19 @@ function Write-PrimeAgentShim {
 	$binDir = Join-Path $InstallDir "bin"
 	New-Item -ItemType Directory -Path $binDir -Force | Out-Null
 	$cmdPath = Join-Path $binDir "prime-agent.cmd"
-	$tsxCmd = Join-Path $InstallDir "node_modules\.bin\tsx.cmd"
-	$cli = Join-Path $InstallDir "packages\coding-agent\src\cli.ts"
+	# %~dp0 must stay a cmd.exe expansion. Keep these lines single-quoted so
+	# PowerShell does not eat $ from %~dp0.
 	@(
 		"@echo off"
 		"setlocal"
-		"if not exist `"$tsxCmd`" ("
-		"  echo Prime Agent is not installed. Re-run the installer."
+		'set "PRIME_AGENT_DIR=%~dp0.."'
+		'set "CLI=%PRIME_AGENT_DIR%\packages\coding-agent\dist\bundle\cli.js"'
+		'if not exist "%CLI%" ('
+		"  echo Prime Agent is not built. Re-run the installer, or run: npm run build"
+		"  echo in %PRIME_AGENT_DIR%"
 		"  exit /b 1"
 		")"
-		"`"$tsxCmd`" `"$cli`" %*"
+		'node "%CLI%" %*'
 		"exit /b %ERRORLEVEL%"
 	) | Set-Content -LiteralPath $cmdPath -Encoding ASCII
 	Add-UserPathEntry $binDir
@@ -304,7 +309,7 @@ function Install-FromGitHub {
 	Write-Host "Destination: $installDir"
 	Write-Host ""
 
-	if (-not (Confirm-YesNo -Prompt "Install?" -Detail "Download this repository and run npm ci (no extra console windows).")) {
+	if (-not (Confirm-YesNo -Prompt "Install?" -Detail "Download this repository, run npm ci, and build (no extra console windows).")) {
 		Write-Host "Installation cancelled."
 		exit 0
 	}
@@ -367,6 +372,24 @@ function Install-FromGitHub {
 		if ($result.Stdout) { Write-Host $result.Stdout }
 		if ($result.Stderr) { [Console]::Error.WriteLine($result.Stderr) }
 		throw "npm ci failed with exit code $($result.ExitCode)"
+	}
+
+	# Workspace packages export dist/, which is not in git. tsx on TypeScript
+	# source resolves @earendil-works/pi-agent-core to dist/index.js and fails
+	# with ERR_MODULE_NOT_FOUND unless the tree is built.
+	Write-Host "Building Prime Agent (no extra console windows)..."
+	$result = Invoke-HiddenProcess -FilePath $cmdExe -ArgumentList @(
+		"/d", "/s", "/c", "npm run build"
+	) -WorkingDirectory $installDir -InheritOutput
+	if ($result.ExitCode -ne 0) {
+		if ($result.Stdout) { Write-Host $result.Stdout }
+		if ($result.Stderr) { [Console]::Error.WriteLine($result.Stderr) }
+		throw "npm run build failed with exit code $($result.ExitCode)"
+	}
+
+	$bundle = Join-Path $installDir "packages\coding-agent\dist\bundle\cli.js"
+	if (-not (Test-Path -LiteralPath $bundle)) {
+		throw "Build finished but $bundle is missing."
 	}
 
 	$shim = Write-PrimeAgentShim -InstallDir $installDir

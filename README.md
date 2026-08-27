@@ -36,7 +36,7 @@ If `raw.githubusercontent.com` is blocked:
 irm https://cdn.jsdelivr.net/gh/mutsuki14/prime-agent-win@main/install.ps1 | iex
 ```
 
-The script clones this repository to `%LOCALAPPDATA%\Programs\prime-agent-win`, runs `npm ci` in the current window (no extra consoles), and puts `prime-agent` on your user PATH.
+The script clones this repository to `%LOCALAPPDATA%\Programs\prime-agent-win`, runs `npm ci` and `npm run build` in the current window (no extra consoles), and puts `prime-agent` on your user PATH. Workspace packages export `dist/`, which is not in git; the build step is required.
 
 Then:
 
@@ -51,8 +51,9 @@ macOS / Linux:
 git clone https://github.com/mutsuki14/prime-agent-win.git
 cd prime-agent-win
 npm ci
+npm run build
 cd /path/to/project
-/path/to/prime-agent-win/prime-agent.sh
+/path/to/prime-agent-win/prime-agent.sh --dist
 ```
 
 On first launch, run `/login` or set an API key such as `ANTHROPIC_API_KEY`. The agent reads and writes the current directory.
@@ -71,6 +72,7 @@ Manual checkout (same result as the installer):
 git clone https://github.com/mutsuki14/prime-agent-win.git
 cd prime-agent-win
 npm ci
+npm run build
 ```
 
 ```powershell
