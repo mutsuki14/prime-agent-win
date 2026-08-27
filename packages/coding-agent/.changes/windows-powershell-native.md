@@ -1,1 +1,2 @@
 - Added native Windows 11 PowerShell support: PowerShell is the default shell, child processes no longer flash extra console windows, and `irm https://app.primeintellect.ai/prime-agent/install.ps1 | iex` installs the release.
+- Replaced the repository README with English and Chinese editions that document Windows-native PowerShell install and hidden child consoles.
