@@ -3,6 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { lockSync } from "proper-lockfile";
+import { windowsInboxPowerShellPath, withWindowsHide } from "../utils/windows-process.js";
 
 export const SESSION_LEASES_ENABLED_ENV = "PRIME_AGENT_INTERNAL_SESSION_LEASES";
 export const SESSION_LEASE_OWNER_ID_ENV = "PRIME_AGENT_INTERNAL_SESSION_LEASE_OWNER_ID";
@@ -113,10 +114,14 @@ function isProcessAlive(pid: number): boolean {
 type ProcessQuery = (command: string, args: string[]) => string;
 
 function runProcessQuery(command: string, args: string[]): string {
-	return execFileSync(command, args, {
-		encoding: "utf8",
-		stdio: ["ignore", "pipe", "ignore"],
-	});
+	return execFileSync(
+		command,
+		args,
+		withWindowsHide({
+			encoding: "utf8",
+			stdio: ["ignore", "pipe", "ignore"],
+		}),
+	);
 }
 
 export function getWindowsProcessStartId(pid: number, query: ProcessQuery = runProcessQuery): string | undefined {
@@ -124,7 +129,7 @@ export function getWindowsProcessStartId(pid: number, query: ProcessQuery = runP
 		return undefined;
 	}
 	try {
-		const startTicks = query("powershell.exe", [
+		const startTicks = query(windowsInboxPowerShellPath(), [
 			"-NoLogo",
 			"-NoProfile",
 			"-NonInteractive",

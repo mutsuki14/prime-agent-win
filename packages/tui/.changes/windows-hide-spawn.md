@@ -1,0 +1,1 @@
+- Hid Windows console windows created by TUI file-search and URL-open subprocesses.

@@ -3,6 +3,20 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+const installerPs1 = readFileSync("install.ps1", "utf-8");
+if (!installerPs1.includes("__PRIME_AGENT_DOWNLOAD_BASE_URL__")) {
+	console.error("Installer render check failed: install.ps1 is missing the download base URL sentinel.");
+	process.exit(1);
+}
+if (!installerPs1.includes("__PRIME_AGENT_DEFAULT_RELEASE_CHANNEL__")) {
+	console.error("Installer render check failed: install.ps1 is missing the default release channel sentinel.");
+	process.exit(1);
+}
+if (!installerPs1.includes("CreateNoWindow")) {
+	console.error("Installer render check failed: install.ps1 must hide Windows child consoles.");
+	process.exit(1);
+}
+
 const installerSource = readFileSync("install.sh", "utf-8");
 const mainCall = '\nmain "$@"';
 const mainCallIndex = installerSource.lastIndexOf(mainCall);

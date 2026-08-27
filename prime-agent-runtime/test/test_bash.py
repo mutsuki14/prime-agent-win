@@ -532,12 +532,34 @@ class BashTest(unittest.IsolatedAsyncioTestCase):
         # Windows must raise without consulting PATH: a which() hit would be
         # the same repo-controlled-PATH hole the host-side resolution closed.
         with mock.patch.object(bash_module, "_IS_POSIX", False):
-            with mock.patch.object(
-                bash_module.shutil, "which", return_value=r"C:\evil\bash.exe"
-            ) as which:
-                with self.assertRaisesRegex(RuntimeError, "PRIME_AGENT_BASH_SHELL"):
-                    bash_module._shell()
-                which.assert_not_called()
+            with mock.patch.object(os.path, "isfile", return_value=False):
+                with mock.patch.object(
+                    bash_module.shutil, "which", return_value=r"C:\evil\bash.exe"
+                ) as which:
+                    with self.assertRaisesRegex(RuntimeError, "PRIME_AGENT_BASH_SHELL"):
+                        bash_module._shell()
+                    which.assert_not_called()
+
+    async def test_windows_default_shell_uses_inbox_powershell_without_path(self):
+        inbox = r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        with mock.patch.object(bash_module, "_IS_POSIX", False):
+            with mock.patch.dict(os.environ, {"SystemRoot": r"C:\Windows"}):
+                with mock.patch.object(bash_module.shutil, "which", return_value=r"C:\evil\pwsh.exe") as which:
+                    with mock.patch.object(os.path, "isfile", side_effect=lambda path: path == inbox):
+                        self.assertEqual(bash_module._shell(), inbox)
+                    which.assert_not_called()
+
+    async def test_shell_argv_uses_powershell_command_flag(self):
+        pwsh = r"C:\Program Files\PowerShell\7\pwsh.exe"
+        with mock.patch.dict(os.environ, {"PRIME_AGENT_BASH_SHELL": pwsh}):
+            self.assertEqual(
+                bash_module._shell_argv("Get-Location"),
+                [pwsh, "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "Get-Location"],
+            )
+
+    async def test_shell_argv_uses_c_for_posix_shell(self):
+        with mock.patch.dict(os.environ, {"PRIME_AGENT_BASH_SHELL": "/bin/sh"}):
+            self.assertEqual(bash_module._shell_argv("echo hi"), ["/bin/sh", "-c", "echo hi"])
 
     async def test_pump_paused_between_read_and_commit_does_not_lose_output(self):
         # Reviewer repro: the chunk is out of the pipe (FIONREAD 0) but not yet

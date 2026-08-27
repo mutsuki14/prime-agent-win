@@ -123,11 +123,12 @@ class WinJobTest(unittest.TestCase):
         create = captured["create"]
         self.assertIsNone(create["app"])
         self.assertEqual(create["cmdline"], subprocess.list2cmdline(argv))
-        self.assertEqual(create["flags"], 0x00080000 | 0x4 | 0x400)
+        self.assertEqual(create["flags"], 0x00080000 | 0x4 | 0x400 | 0x08000000)
         self.assertEqual(create["env"], "A=1\0B=two\0\0")  # double-NUL terminated block
         self.assertEqual(create["cwd"], "C:/work")
         self.assertEqual(create["cb"], ctypes.sizeof(_winjob._STARTUPINFOEXW))
         self.assertEqual(create["dwFlags"] & 0x100, 0x100)  # STARTF_USESTDHANDLES
+        self.assertEqual(create["dwFlags"] & 0x1, 0x1)  # STARTF_USESHOWWINDOW
         self.assertEqual(create["hStdInput"], 103)
         self.assertEqual(create["hStdOutput"], 102)
         self.assertEqual(create["hStdError"], 102)

@@ -172,7 +172,7 @@ class BashHandle:
                 )
             else:
                 self._proc = _winjob.spawn_in_job(
-                    self._job, [_shell(), "-c", script], cwd=os.getcwd(), env=_child_env()
+                    self._job, _shell_argv(script), cwd=os.getcwd(), env=_child_env()
                 )
         except BaseException:
             for fd in (self._status_read, self._wake_read, self._wake_write):
@@ -616,6 +616,35 @@ def bash(command: str) -> BashHandle:
     return BashHandle(command)
 
 
+_POWERSHELL_NAMES = frozenset({"powershell.exe", "powershell", "pwsh.exe", "pwsh"})
+_POWERSHELL_ARGS = ("-NoLogo", "-NoProfile", "-NonInteractive", "-Command")
+_WINDOWS_PWSH_PATHS = (
+    r"C:\Program Files\PowerShell\7\pwsh.exe",
+    r"C:\Program Files\PowerShell\7-preview\pwsh.exe",
+)
+_CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+
+
+def _is_powershell(path: str) -> bool:
+    return os.path.basename(path).lower() in _POWERSHELL_NAMES
+
+
+def _windows_inbox_powershell() -> str:
+    return _system32("WindowsPowerShell", "v1.0", "powershell.exe")
+
+
+def _windows_default_shell() -> str | None:
+    # Well-known absolute paths only: never PATH (a repo-controlled PATH could
+    # supply the shell). Prefer PowerShell 7, then in-box Windows PowerShell 5.1.
+    for path in _WINDOWS_PWSH_PATHS:
+        if os.path.isfile(path):
+            return path
+    inbox = _windows_inbox_powershell()
+    if os.path.isfile(inbox):
+        return inbox
+    return None
+
+
 def _shell() -> str:
     # Read per call so env changes made in the REPL apply to later commands.
     override = os.environ.get("PRIME_AGENT_BASH_SHELL")
@@ -625,16 +654,34 @@ def _shell() -> str:
         return override
     if not _IS_POSIX:
         # Never consult PATH on Windows: a repo-controlled PATH could supply
-        # the shell. The host injects PRIME_AGENT_BASH_SHELL when one exists.
+        # the shell. The host injects PRIME_AGENT_BASH_SHELL when one exists;
+        # otherwise use the in-box Windows PowerShell (always present on Win11).
+        found = _windows_default_shell()
+        if found:
+            return found
         raise RuntimeError(
             "bash() needs PRIME_AGENT_BASH_SHELL set to the absolute path of a "
-            "POSIX shell on Windows (e.g. install Git Bash in its default "
-            "location so the host injects it)"
+            "shell on Windows (Windows PowerShell at "
+            r"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe, "
+            "PowerShell 7, or Git Bash)"
         )
     # PATH fallback only serves bare/standalone POSIX runtime use: the host
     # always injects PRIME_AGENT_BASH_SHELL (an absolute path) when a shell exists.
     shell = shutil.which("bash")
     return shell or "/bin/sh"
+
+
+def _shell_argv(script: str) -> list[str]:
+    shell = _shell()
+    if _is_powershell(shell):
+        return [shell, *_POWERSHELL_ARGS, script]
+    return [shell, "-c", script]
+
+
+def _run_hidden(argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[Any]:
+    if os.name == "nt":
+        kwargs.setdefault("creationflags", _CREATE_NO_WINDOW)
+    return subprocess.run(argv, **kwargs)
 
 
 def _with_prefix(command: str) -> str:
@@ -695,7 +742,7 @@ def _taskkill_tree(pid: int) -> bool:
     # Windows has no process groups to signal; taskkill /T kills the whole tree.
     try:
         return (
-            subprocess.run(
+            _run_hidden(
                 [_system32("taskkill.exe"), "/PID", str(pid), "/T", "/F"],
                 capture_output=True,
                 timeout=10,
@@ -712,7 +759,7 @@ def _process_start_id(pid: int) -> str | None:
         # Mirrors getWindowsProcessStartId in session-lease.ts byte-for-byte so
         # the host's identity comparison matches the journaled string.
         try:
-            out = subprocess.run(
+            out = _run_hidden(
                 [
                     _system32("WindowsPowerShell", "v1.0", "powershell.exe"),
                     "-NoLogo",

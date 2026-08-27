@@ -10,10 +10,21 @@ Install the latest stable release on Linux or macOS:
 curl -fsSL https://app.primeintellect.ai/prime-agent/install.sh | sh
 ```
 
+On Windows 11 PowerShell:
+
+```powershell
+irm https://app.primeintellect.ai/prime-agent/install.ps1 | iex
+```
+
 To try the latest beta built from `main`:
 
 ```bash
 curl -fsSL https://app.primeintellect.ai/prime-agent/install.sh | sh -s -- beta
+```
+
+```powershell
+$env:PRIME_AGENT_RELEASE_CHANNEL = "beta"
+irm https://app.primeintellect.ai/prime-agent/install.ps1 | iex
 ```
 
 Both commands fetch versioned Prime Agent release artifacts and install the `prime-agent` command. The inherited npm workspace identifiers in the source tree are not the public install path.

@@ -12,6 +12,7 @@ import {
 	SESSION_LEASES_ENABLED_ENV,
 	SessionAlreadyActiveError,
 } from "../src/core/session-lease.js";
+import { windowsInboxPowerShellPath } from "../src/utils/windows-process.js";
 
 const tempDirs: string[] = [];
 
@@ -45,7 +46,7 @@ describe("session leases", () => {
 		expect(processStartId).toBe("win:638880485801234567");
 		expect(calls).toEqual([
 			{
-				command: "powershell.exe",
+				command: windowsInboxPowerShellPath(),
 				args: [
 					"-NoLogo",
 					"-NoProfile",

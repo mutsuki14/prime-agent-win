@@ -14,6 +14,7 @@ import {
 	trackDetachedChildPid,
 	untrackDetachedChildPid,
 } from "../../utils/shell.js";
+import { withWindowsHide } from "../../utils/windows-process.js";
 import type { ToolDefinition, ToolRenderResultOptions } from "../extensions/types.js";
 import { previewBashCommand } from "./code-preview.js";
 import { OutputAccumulator } from "./output-accumulator.js";
@@ -22,7 +23,12 @@ import { wrapToolDefinition } from "./tool-definition-wrapper.js";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize, type TruncationResult } from "./truncate.js";
 
 const bashSchema = Type.Object({
-	command: Type.String({ description: "Bash command to execute" }),
+	command: Type.String({
+		description:
+			process.platform === "win32"
+				? "Shell command to execute (PowerShell by default on Windows; POSIX if shellPath is a POSIX shell)"
+				: "Bash command to execute",
+	}),
 	timeout: Type.Optional(Type.Number({ description: "Timeout in seconds (optional, no default timeout)" })),
 });
 
@@ -72,12 +78,16 @@ export function createLocalBashOperations(options?: { shellPath?: string }): Bas
 					reject(new Error(`Working directory does not exist: ${cwd}\nCannot execute bash commands.`));
 					return;
 				}
-				const child = spawn(shell, [...args, command], {
-					cwd,
-					detached: process.platform !== "win32",
-					env: env ?? getShellEnv(),
-					stdio: ["ignore", "pipe", "pipe"],
-				});
+				const child = spawn(
+					shell,
+					[...args, command],
+					withWindowsHide({
+						cwd,
+						detached: process.platform !== "win32",
+						env: env ?? getShellEnv(),
+						stdio: ["ignore", "pipe", "pipe"],
+					}),
+				);
 				if (child.pid) trackDetachedChildPid(child.pid);
 				let timedOut = false;
 				let timeoutHandle: NodeJS.Timeout | undefined;
@@ -280,8 +290,14 @@ export function createBashToolDefinition(
 	const definition: ToolDefinition<typeof bashSchema, BashToolDetails | undefined, BashRenderState> = {
 		name: "bash",
 		label: "bash",
-		description: `Execute a bash command in the current working directory. Returns stdout and stderr. Output is truncated to last ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.`,
-		promptSnippet: "Execute bash commands (ls, grep, find, etc.)",
+		description:
+			process.platform === "win32"
+				? `Execute a shell command in the current working directory using PowerShell (pwsh if installed, otherwise Windows PowerShell 5.1). Write PowerShell unless shellPath points at a POSIX shell. Returns stdout and stderr. Output is truncated to last ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.`
+				: `Execute a bash command in the current working directory. Returns stdout and stderr. Output is truncated to last ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.`,
+		promptSnippet:
+			process.platform === "win32"
+				? "Execute shell commands (PowerShell by default: Get-ChildItem, Select-String, etc.)"
+				: "Execute bash commands (ls, grep, find, etc.)",
 		parameters: bashSchema,
 		async execute(
 			_toolCallId,

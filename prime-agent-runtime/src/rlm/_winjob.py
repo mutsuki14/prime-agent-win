@@ -26,7 +26,10 @@ _PROC_THREAD_ATTRIBUTE_HANDLE_LIST = 0x20002  # value 2 | PROC_THREAD_ATTRIBUTE_
 _EXTENDED_STARTUPINFO_PRESENT = 0x00080000
 _CREATE_SUSPENDED = 0x4
 _CREATE_UNICODE_ENVIRONMENT = 0x400
+_CREATE_NO_WINDOW = 0x08000000
 _STARTF_USESTDHANDLES = 0x100
+_STARTF_USESHOWWINDOW = 0x1
+_SW_HIDE = 0
 _HANDLE_FLAG_INHERIT = 0x1
 _GENERIC_READ = 0x80000000
 _FILE_SHARE_READ_WRITE = 0x3
@@ -311,7 +314,8 @@ def spawn_in_job(job: int, argv: list[str], cwd: str, env: dict[str, str]) -> Jo
             raise OSError(f"UpdateProcThreadAttribute failed: {_last_error()}")
         startup = _STARTUPINFOEXW()
         startup.StartupInfo.cb = ctypes.sizeof(_STARTUPINFOEXW)
-        startup.StartupInfo.dwFlags = _STARTF_USESTDHANDLES
+        startup.StartupInfo.dwFlags = _STARTF_USESTDHANDLES | _STARTF_USESHOWWINDOW
+        startup.StartupInfo.wShowWindow = _SW_HIDE
         startup.StartupInfo.hStdInput = nul_handle
         startup.StartupInfo.hStdOutput = startup.StartupInfo.hStdError = write_handle
         startup.lpAttributeList = ctypes.cast(attr_list, wintypes.LPVOID)
@@ -323,7 +327,12 @@ def spawn_in_job(job: int, argv: list[str], cwd: str, env: dict[str, str]) -> Jo
                 f"{key}={value}" for key, value in sorted(env.items(), key=lambda kv: kv[0].upper())
             ) + "\0")
         info = _PROCESS_INFORMATION()
-        flags = _EXTENDED_STARTUPINFO_PRESENT | _CREATE_SUSPENDED | _CREATE_UNICODE_ENVIRONMENT
+        flags = (
+            _EXTENDED_STARTUPINFO_PRESENT
+            | _CREATE_SUSPENDED
+            | _CREATE_UNICODE_ENVIRONMENT
+            | _CREATE_NO_WINDOW
+        )
         if not k32.CreateProcessW(
             None, cmdline, None, None, True, flags, env_block, cwd,
             ctypes.byref(startup), ctypes.byref(info)):

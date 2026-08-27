@@ -4,6 +4,7 @@
 
 import { spawn } from "node:child_process";
 import { waitForChildProcess } from "../utils/child-process.js";
+import { withWindowsHide } from "../utils/windows-process.js";
 
 /**
  * Options for executing shell commands.
@@ -58,14 +59,18 @@ export async function execCommand(
 	options?: ExecOptions,
 ): Promise<ExecResult> {
 	return new Promise((resolve) => {
-		const proc = spawn(command, args, {
-			cwd,
-			shell: false,
-			stdio: ["ignore", "pipe", "pipe"],
-			// Merge per-call env over the parent env so callers can scope vars
-			// (e.g. herdr pane identity) without mutating the shared process.env.
-			env: mergeExecEnv(options?.env),
-		});
+		const proc = spawn(
+			command,
+			args,
+			withWindowsHide({
+				cwd,
+				shell: false,
+				stdio: ["ignore", "pipe", "pipe"],
+				// Merge per-call env over the parent env so callers can scope vars
+				// (e.g. herdr pane identity) without mutating the shared process.env.
+				env: mergeExecEnv(options?.env),
+			}),
+		);
 
 		let stdout = "";
 		let stderr = "";

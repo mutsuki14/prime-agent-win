@@ -182,7 +182,7 @@ When a provider requests a retry delay longer than `retry.provider.maxRetryDelay
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `shellPath` | string | - | Custom shell path (e.g., for Cygwin on Windows) |
+| `shellPath` | string | - | Custom shell path. On Windows the default is PowerShell 7 or Windows PowerShell 5.1; set this for Git Bash or Cygwin. |
 | `shellCommandPrefix` | string | - | Prefix for every bash command (e.g., `"shopt -s expand_aliases"`) |
 | `npmCommand` | string[] | - | Command argv used for npm package lookup/install operations (e.g., `["mise", "exec", "node@20", "--", "npm"]`) |
 

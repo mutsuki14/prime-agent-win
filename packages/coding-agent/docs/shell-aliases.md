@@ -1,6 +1,6 @@
 # Shell Aliases
 
-Prime Agent runs bash in non-interactive mode (`bash -c`), which doesn't expand aliases by default.
+Prime Agent runs the configured shell in non-interactive mode (`bash -c` on POSIX, `powershell -NoProfile -NonInteractive -Command` on Windows), which doesn't expand aliases by default.
 
 To enable your shell aliases, add to `~/.prime/agent/settings.json`:
 

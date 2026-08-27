@@ -46,10 +46,21 @@ Prime Agent began as a hard fork of [pi-mono](https://github.com/badlogic/pi-mon
 curl -fsSL https://app.primeintellect.ai/prime-agent/install.sh | sh
 ```
 
+On Windows 11 PowerShell:
+
+```powershell
+irm https://app.primeintellect.ai/prime-agent/install.ps1 | iex
+```
+
 To install the beta built from the latest commit on `main`:
 
 ```bash
 curl -fsSL https://app.primeintellect.ai/prime-agent/install.sh | sh -s -- beta
+```
+
+```powershell
+$env:PRIME_AGENT_RELEASE_CHANNEL = "beta"
+irm https://app.primeintellect.ai/prime-agent/install.ps1 | iex
 ```
 
 Authenticate with an API key:

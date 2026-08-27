@@ -9,6 +9,7 @@ import { createInterface } from "node:readline/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { getPackageDir } from "../../config.js";
+import { windowsInboxPowerShellPath } from "../../utils/windows-process.js";
 import type { PythonSkillRuntimeInfo } from "../skills.js";
 
 const BOOTSTRAP_SCHEMA = 9;
@@ -35,6 +36,15 @@ export const DEFAULT_RLM_EXTRA_UV_ARGS = DEFAULT_RLM_EXTRA_PACKAGES.map((pkg) =>
 export const DEFAULT_RLM_EXTRA_IMPORT_NAMES = DEFAULT_RLM_EXTRA_PACKAGES.map((pkg) => pkg.importName);
 export const DEFAULT_RLM_EXTRA_IMPORT_LABELS = DEFAULT_RLM_EXTRA_PACKAGES.map((pkg) => pkg.promptLabel);
 const UV_INSTALL_COMMAND = "curl -LsSf https://astral.sh/uv/install.sh | sh";
+const UV_INSTALL_PS_COMMAND = "irm https://astral.sh/uv/install.ps1 | iex";
+
+export function kernelVenvPythonPath(venv: string): string {
+	return process.platform === "win32" ? path.join(venv, "Scripts", "python.exe") : path.join(venv, "bin", "python");
+}
+
+function uvInstallHint(): string {
+	return process.platform === "win32" ? UV_INSTALL_PS_COMMAND : UV_INSTALL_COMMAND;
+}
 const REQUIRED_HARNESS_METHODS = [
 	"create_memory",
 	"update_memory",
@@ -374,6 +384,7 @@ function run(command: string, args: string[], options: { stdio?: "ignore" | "inh
 		const child = spawn(command, args, {
 			env: process.env,
 			stdio: options.stdio ?? "ignore",
+			windowsHide: true,
 		});
 		child.on("error", reject);
 		child.on("exit", (code, signal) => {
@@ -511,29 +522,44 @@ async function ensureUv(options: EnsureKernelPythonOptions): Promise<string> {
 
 	const localUv = path.join(os.homedir(), ".local", "bin", process.platform === "win32" ? "uv.exe" : "uv");
 	if (await isExecutable(localUv)) return localUv;
+	const cargoUv = path.join(os.homedir(), ".cargo", "bin", process.platform === "win32" ? "uv.exe" : "uv");
+	if (await isExecutable(cargoUv)) return cargoUv;
 
 	const shouldInstallUv =
 		process.env.PRIME_AGENT_INSTALL_UV === "1" || (!options.onProgress && (await confirmUvInstall()));
 	if (!shouldInstallUv) {
 		throw new Error(
-			`uv is required to set up the Python kernel. Install uv yourself: ${UV_INSTALL_COMMAND}, ` +
+			`uv is required to set up the Python kernel. Install uv yourself: ${uvInstallHint()}, ` +
 				"or set PRIME_AGENT_INSTALL_UV=1 to let prime-agent run that installer.",
 		);
 	}
 
 	reportProgress(options, "› installing uv (one-time)…");
 	try {
-		await run("sh", ["-c", UV_INSTALL_COMMAND], { stdio: options.onProgress ? "ignore" : "inherit" });
+		if (process.platform === "win32") {
+			await run(
+				windowsInboxPowerShellPath(),
+				["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", UV_INSTALL_PS_COMMAND],
+				{ stdio: options.onProgress ? "ignore" : "inherit" },
+			);
+		} else {
+			await run("sh", ["-c", UV_INSTALL_COMMAND], { stdio: options.onProgress ? "ignore" : "inherit" });
+		}
 	} catch (error) {
 		throw new Error(
-			`couldn't install uv from astral.sh; install it yourself: ${UV_INSTALL_COMMAND}, then re-run prime-agent. ${errorMessage(error)}`,
+			`couldn't install uv from astral.sh; install it yourself: ${uvInstallHint()}, then re-run prime-agent. ${errorMessage(error)}`,
 		);
 	}
 
 	if (await isExecutable(localUv)) return localUv;
+	if (await isExecutable(cargoUv)) return cargoUv;
 	const installedFromPath = await findExecutable("uv");
 	if (installedFromPath) return installedFromPath;
-	throw new Error("uv install completed but binary not found at ~/.local/bin/uv");
+	throw new Error(
+		process.platform === "win32"
+			? "uv install completed but binary not found at ~/.local/bin/uv.exe"
+			: "uv install completed but binary not found at ~/.local/bin/uv",
+	);
 }
 
 async function confirmUvInstall(): Promise<boolean> {
@@ -716,7 +742,7 @@ async function bootstrapVenv(
 ): Promise<void> {
 	await mkdir(path.dirname(venv), { recursive: true });
 	const uv = await ensureUv(options);
-	const python = path.join(venv, "bin", "python");
+	const python = kernelVenvPythonPath(venv);
 	const sourceDir = await resolveRuntimeSourceDir();
 	const runtimeRequirement = sourceDir ?? RUNTIME_REQUIREMENT;
 	const runtimeIdentity = await resolveRuntimeIdentity();
@@ -873,7 +899,7 @@ async function ensureKernelPythonUncached(
 	}
 
 	const venv = await resolveWritableKernelVenvDir();
-	const python = path.join(venv, "bin", "python");
+	const python = kernelVenvPythonPath(venv);
 	const runtimeIdentity = await resolveRuntimeIdentity();
 	if (await kernelReady(python, venv, runtimeIdentity, pythonSkills)) return python;
 

@@ -463,7 +463,7 @@ export class IpythonKernelProvisioner {
 			}
 			const snapshotDir = this.options?.snapshotDir;
 			// Always inject an absolute trusted shell (undefined only on win32
-			// without bash, where the runtime's teaching error fires instead).
+			// without PowerShell or Git Bash, where the runtime's teaching error fires).
 			const shellPath = resolveKernelBashShell(this.options?.shellPath);
 			const commandPrefix = this.options?.commandPrefix;
 			const m = new ReplKernelManager({
@@ -622,7 +622,7 @@ export function createIpythonToolDefinition(
 		name: "ipython",
 		label: "ipython",
 		description:
-			"Execute Python code in a persistent Python REPL. Top-level `await` is supported. Variables, imports, and loaded data persist across calls, and are revived on a best-effort basis when a session is resumed (objects that cannot be serialized are dropped and reported). Run shell commands with `bash('cmd')` / `await bash('cmd')`. Project imports, tests, scripts, CLIs, and dependency checks should run through the target project's own environment.",
+			"Execute Python code in a persistent Python REPL. Top-level `await` is supported. Variables, imports, and loaded data persist across calls, and are revived on a best-effort basis when a session is resumed (objects that cannot be serialized are dropped and reported). Run shell commands with `bash('cmd')` / `await bash('cmd')`. On Windows, bash() defaults to PowerShell (pwsh if installed, otherwise Windows PowerShell); write PowerShell unless shellPath points at a POSIX shell. Project imports, tests, scripts, CLIs, and dependency checks should run through the target project's own environment.",
 		promptSnippet: "ipython - persistent Python REPL for code, state, and bash() orchestration",
 		// The kernel is single-threaded — pi must not run two ipython calls in parallel within a batch.
 		executionMode: "sequential",

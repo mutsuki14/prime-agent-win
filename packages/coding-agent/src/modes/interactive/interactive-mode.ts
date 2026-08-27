@@ -7363,6 +7363,7 @@ export class InteractiveMode {
 			const result = spawnSync(editor, [...editorArgs, tmpFile], {
 				stdio: "inherit",
 				shell: process.platform === "win32",
+				windowsHide: true,
 			});
 
 			// On successful exit (status 0), replace editor content
@@ -8739,6 +8740,7 @@ export class InteractiveMode {
 				stdio: "inherit",
 				cwd: updateCwd,
 				env: updateEnv,
+				windowsHide: true,
 			},
 		);
 		const updateExitCode = updateResult.status ?? (updateResult.signal ? 1 : 0);
@@ -8790,6 +8792,7 @@ export class InteractiveMode {
 				stdio: "inherit",
 				cwd: updateCwd,
 				env: process.env,
+				windowsHide: true,
 			});
 			if (relaunchResult.error) {
 				console.error(`Failed to relaunch ${APP_NAME}: ${relaunchResult.error.message}`);
@@ -9005,7 +9008,7 @@ export class InteractiveMode {
 	private async handleShareCommand(): Promise<void> {
 		// Check if gh is available and logged in
 		try {
-			const authResult = spawnSync("gh", ["auth", "status"], { encoding: "utf-8" });
+			const authResult = spawnSync("gh", ["auth", "status"], { encoding: "utf-8", windowsHide: true });
 			if (authResult.status !== 0) {
 				this.showError("GitHub CLI is not logged in. Run 'gh auth login' first.");
 				return;
@@ -9054,7 +9057,7 @@ export class InteractiveMode {
 
 		try {
 			const result = await new Promise<{ stdout: string; stderr: string; code: number | null }>((resolve) => {
-				proc = spawn("gh", ["gist", "create", "--public=false", tmpFile]);
+				proc = spawn("gh", ["gist", "create", "--public=false", tmpFile], { windowsHide: true });
 				let stdout = "";
 				let stderr = "";
 				proc.stdout?.on("data", (data) => {
