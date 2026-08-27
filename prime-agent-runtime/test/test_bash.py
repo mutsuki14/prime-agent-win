@@ -308,9 +308,9 @@ class BashTest(unittest.IsolatedAsyncioTestCase):
                     with mock.patch.dict(os.environ, {"SystemRoot": r"C:\WinTest"}):
                         with patched_run as run:
                             handle.kill()
-                    taskkill = os.path.join(r"C:\WinTest", "System32", "taskkill.exe")
                     self.assertEqual(
-                        run.call_args.args[0], [taskkill, "/PID", str(handle.pid), "/T", "/F"]
+                        run.call_args.args[0],
+                        [r"C:\WinTest\System32\taskkill.exe", "/PID", str(handle.pid), "/T", "/F"],
                     )
                     self.assertEqual(
                         run.call_args.kwargs["env"]["NoDefaultCurrentDirectoryInExePath"], "1"
@@ -389,7 +389,7 @@ class BashTest(unittest.IsolatedAsyncioTestCase):
         argv = run.call_args.args[0]
         self.assertEqual(
             argv[0],
-            os.path.join(r"C:\WinTest", "System32", "WindowsPowerShell", "v1.0", "powershell.exe"),
+            r"C:\WinTest\System32\WindowsPowerShell\v1.0\powershell.exe",
         )
         self.assertEqual(run.call_args.kwargs["env"]["NoDefaultCurrentDirectoryInExePath"], "1")
         self.assertIn("GetProcessById(1234)", argv[-1])
@@ -541,13 +541,28 @@ class BashTest(unittest.IsolatedAsyncioTestCase):
                     which.assert_not_called()
 
     async def test_windows_default_shell_uses_inbox_powershell_without_path(self):
-        inbox = r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
         with mock.patch.object(bash_module, "_IS_POSIX", False):
             with mock.patch.dict(os.environ, {"SystemRoot": r"C:\Windows"}):
+                os.environ.pop("PRIME_AGENT_BASH_SHELL", None)
+                inbox = bash_module._windows_inbox_powershell()
+                self.assertEqual(
+                    inbox, r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+                )
                 with mock.patch.object(bash_module.shutil, "which", return_value=r"C:\evil\pwsh.exe") as which:
                     with mock.patch.object(os.path, "isfile", side_effect=lambda path: path == inbox):
                         self.assertEqual(bash_module._shell(), inbox)
                     which.assert_not_called()
+
+    async def test_is_powershell_and_absolute_paths_are_host_independent(self):
+        pwsh = r"C:\Program Files\PowerShell\7\pwsh.exe"
+        inbox = r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        self.assertTrue(bash_module._is_powershell(pwsh))
+        self.assertTrue(bash_module._is_powershell(inbox))
+        self.assertTrue(bash_module._is_powershell("/usr/bin/pwsh"))
+        self.assertFalse(bash_module._is_powershell(r"C:\Program Files\Git\bin\bash.exe"))
+        self.assertTrue(bash_module._is_absolute_shell_path(pwsh))
+        self.assertTrue(bash_module._is_absolute_shell_path("/bin/bash"))
+        self.assertFalse(bash_module._is_absolute_shell_path("pwsh.exe"))
 
     async def test_shell_argv_uses_powershell_command_flag(self):
         pwsh = r"C:\Program Files\PowerShell\7\pwsh.exe"

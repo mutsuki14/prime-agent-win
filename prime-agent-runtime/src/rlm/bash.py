@@ -626,7 +626,18 @@ _CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
 
 
 def _is_powershell(path: str) -> bool:
-    return os.path.basename(path).lower() in _POWERSHELL_NAMES
+    # Split on both separators so a Windows path is recognized on POSIX hosts
+    # (CI mocks) the same way it is on win32.
+    name = path.replace("\\", "/").rsplit("/", 1)[-1].lower()
+    return name in _POWERSHELL_NAMES
+
+
+def _is_absolute_shell_path(path: str) -> bool:
+    if os.path.isabs(path):
+        return True
+    if path.startswith("\\\\") or path.startswith("//"):
+        return True
+    return len(path) >= 3 and path[0].isalpha() and path[1] == ":" and path[2] in "\\/"
 
 
 def _windows_inbox_powershell() -> str:
@@ -649,7 +660,7 @@ def _shell() -> str:
     # Read per call so env changes made in the REPL apply to later commands.
     override = os.environ.get("PRIME_AGENT_BASH_SHELL")
     if override:
-        if not os.path.isabs(override):
+        if not _is_absolute_shell_path(override):
             raise ValueError("PRIME_AGENT_BASH_SHELL must be an absolute path")
         return override
     if not _IS_POSIX:
@@ -728,10 +739,11 @@ def _signal_group(pid: int, sig: int) -> bool:
 
 
 def _system32(*parts: str) -> str:
-    # Absolute paths for Windows helper binaries: PATH (and CWD on Windows
-    # CPython) lookup could resolve a planted taskkill.exe/powershell.exe.
-    root = os.environ.get("SystemRoot", r"C:\Windows")
-    return os.path.join(root, "System32", *parts)
+    # Absolute Windows helper paths with \\ even on POSIX hosts (CI mocks).
+    # PATH (and CWD on Windows CPython) lookup could resolve a planted
+    # taskkill.exe/powershell.exe.
+    root = os.environ.get("SystemRoot", r"C:\Windows").rstrip("\\/")
+    return "\\".join((root, "System32", *parts))
 
 
 def _helper_env() -> dict[str, str]:
