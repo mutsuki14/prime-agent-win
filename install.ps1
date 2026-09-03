@@ -326,8 +326,10 @@ function Install-FromGitHub {
 			if ($result.ExitCode -ne 0) {
 				throw "git fetch failed with exit code $($result.ExitCode)"
 			}
+			# Keep the checkout on a named branch so `git pull origin main` keeps
+			# working for manual updates instead of leaving a detached HEAD.
 			$result = Invoke-HiddenProcess -FilePath $git -ArgumentList @(
-				"-C", $installDir, "checkout", "-f", "FETCH_HEAD"
+				"-C", $installDir, "checkout", "-f", "-B", $PrimeAgentGitHubRef, "FETCH_HEAD"
 			) -InheritOutput
 			if ($result.ExitCode -ne 0) {
 				throw "git checkout failed with exit code $($result.ExitCode)"
@@ -401,6 +403,11 @@ function Install-FromGitHub {
 	Write-Host "Open a new PowerShell window, then:"
 	Write-Host "  cd C:\path\to\project"
 	Write-Host "  prime-agent"
+	Write-Host ""
+	Write-Host "To update later, re-run this installer or:"
+	Write-Host "  cd `"$installDir`""
+	Write-Host "  git pull origin $PrimeAgentGitHubRef"
+	Write-Host "  npm ci; npm run build"
 	Write-Host ""
 	Write-Host "This session already has the launcher on PATH. You can run prime-agent now."
 }

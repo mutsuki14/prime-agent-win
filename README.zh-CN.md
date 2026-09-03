@@ -60,12 +60,21 @@ cd /path/to/project
 
 Windows 上：`Ctrl+V` 或 `Shift+Insert` 粘贴，`Ctrl+Shift+C` 或 `Ctrl+Insert` 复制当前输入，`Ctrl+C` 中断。
 
-在 Windows 上，`bash()` 写 PowerShell（`Get-ChildItem`、`Select-String`、`.venv\Scripts\python.exe`）。只有需要 POSIX 语法时才设置 `shellPath`：
+在 Windows 上，`bash()` 写 PowerShell（`Get-ChildItem`、`Select-String`、`.venv\Scripts\python.exe`）。即使是 Windows PowerShell 5.1，输出也是 UTF-8（中文不乱码），并返回真实退出码。只有需要 POSIX 语法时才设置 `shellPath`：
 
 ```json
 {
   "shellPath": "C:\\Program Files\\Git\\bin\\bash.exe"
 }
+```
+
+更新已有安装（跟随官方 Prime Agent 0.9.1）：
+
+```powershell
+cd $env:LOCALAPPDATA\Programs\prime-agent-win
+git pull origin main
+npm ci
+npm run build
 ```
 
 手动克隆（和安装器结果相同）：

@@ -16,10 +16,16 @@ import {
 	DAEMON_SCHEMA_ID,
 	type DaemonRuntimeIdentity,
 } from "../modes/daemon/daemon-protocol.js";
-import { defaultDaemonSocketDir, defaultDaemonSocketPath, normalizeSocketPath } from "../modes/daemon/daemon-socket.js";
+import {
+	defaultDaemonSocketDir,
+	defaultDaemonSocketPath,
+	normalizeSocketPath,
+	WINDOWS_WORKER_PIPE_PREFIX,
+} from "../modes/daemon/daemon-socket.js";
 import { acquireDaemonShutdownAdmission } from "../modes/daemon/daemon-supervisor-ownership.js";
 import type { DaemonWorkerDescriptor } from "../modes/daemon/daemon-worker-protocol.js";
 import { signalProcessGroupOrProcess } from "../utils/child-process.js";
+import { killWindowsProcessTree } from "../utils/windows-process.js";
 import { formatDaemonListTable } from "./daemon-ps-format.js";
 import { promptYesNo } from "./daemon-stop-confirm.js";
 
@@ -361,6 +367,11 @@ export async function discoverDaemons(): Promise<DaemonInfo[]> {
 		...workerSockets,
 	]);
 	const defaultSocket = normalizeSocketPath(defaultDaemonSocketPath());
+	// Windows has no listener scan and no socket files, so the default named pipe
+	// is only discoverable by probing it directly.
+	if (process.platform === "win32") {
+		sockets.add(defaultSocket);
+	}
 
 	const infos = await Promise.all(
 		[...sockets].map(async (socketPath): Promise<DaemonInfo> => {
@@ -392,7 +403,9 @@ export async function discoverDaemons(): Promise<DaemonInfo[]> {
 		}),
 	);
 
-	return sortDaemons(infos);
+	// A named pipe vanishes with its server: an unreachable pipe with no process
+	// and no tracked workers is not an orphan file, it is simply not running.
+	return sortDaemons(infos.filter((info) => process.platform !== "win32" || info.status !== "orphan-file"));
 }
 
 export function sortDaemons(infos: DaemonInfo[]): DaemonInfo[] {
@@ -807,6 +820,9 @@ function recordResidualListenerFailures(
 	}
 }
 function describeDaemonParent(pid: number): string {
+	if (process.platform === "win32") {
+		return "";
+	}
 	const result = spawnSync("ps", ["-o", "ppid=,tty=,command=", "-p", String(pid)], {
 		encoding: "utf8",
 		windowsHide: true,
@@ -885,8 +901,10 @@ function recordShutdownFailure(
 }
 
 export function isWorkerSocketPath(socketPath: string): boolean {
+	if (process.platform === "win32") {
+		return socketPath.toLowerCase().startsWith(WINDOWS_WORKER_PIPE_PREFIX.toLowerCase());
+	}
 	return (
-		process.platform !== "win32" &&
 		resolve(dirname(socketPath)) === resolve(defaultDaemonSocketDir()) &&
 		basename(socketPath).startsWith("worker-") &&
 		basename(socketPath).endsWith(".sock")
@@ -1193,6 +1211,10 @@ async function reapReachableDaemon(socketPath: string, pid: number | undefined):
 }
 
 function removeSocketFile(socketPath: string): boolean {
+	// Named pipes have no file to unlink; they disappear with their server.
+	if (process.platform === "win32") {
+		return true;
+	}
 	try {
 		if (existsSync(socketPath)) {
 			unlinkSync(socketPath);
@@ -1204,6 +1226,11 @@ function removeSocketFile(socketPath: string): boolean {
 }
 
 function killDaemon(pid: number): void {
+	if (process.platform === "win32") {
+		// No process groups on Windows: take the daemon's workers down with it.
+		killWindowsProcessTree(pid);
+		return;
+	}
 	try {
 		process.kill(pid, "SIGTERM");
 	} catch {

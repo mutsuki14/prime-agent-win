@@ -11,6 +11,7 @@ import {
 	getShellConfig,
 	getShellEnv,
 	killProcessTree,
+	shellCommandArgs,
 	trackDetachedChildPid,
 	untrackDetachedChildPid,
 } from "../../utils/shell.js";
@@ -73,14 +74,14 @@ export function createLocalBashOperations(options?: { shellPath?: string }): Bas
 	return {
 		exec: (command, cwd, { onData, signal, timeout, env }) => {
 			return new Promise((resolve, reject) => {
-				const { shell, args } = getShellConfig(options?.shellPath);
+				const shellConfig = getShellConfig(options?.shellPath);
 				if (!existsSync(cwd)) {
 					reject(new Error(`Working directory does not exist: ${cwd}\nCannot execute bash commands.`));
 					return;
 				}
 				const child = spawn(
-					shell,
-					[...args, command],
+					shellConfig.shell,
+					shellCommandArgs(shellConfig, command),
 					withWindowsHide({
 						cwd,
 						detached: process.platform !== "win32",

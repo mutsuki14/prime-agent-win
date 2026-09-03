@@ -567,10 +567,25 @@ class BashTest(unittest.IsolatedAsyncioTestCase):
     async def test_shell_argv_uses_powershell_command_flag(self):
         pwsh = r"C:\Program Files\PowerShell\7\pwsh.exe"
         with mock.patch.dict(os.environ, {"PRIME_AGENT_BASH_SHELL": pwsh}):
-            self.assertEqual(
-                bash_module._shell_argv("Get-Location"),
-                [pwsh, "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "Get-Location"],
-            )
+            argv = bash_module._shell_argv("Get-Location")
+        self.assertEqual(argv[:5], [pwsh, "-NoLogo", "-NoProfile", "-NonInteractive", "-Command"])
+        self.assertEqual(len(argv), 6)
+        preamble, script, trailer = argv[5].split("\n")
+        # UTF-8 on both channels, no BOM, before the user's script runs.
+        self.assertIn("[System.Text.UTF8Encoding]::new($false)", preamble)
+        self.assertIn("[Console]::OutputEncoding", preamble)
+        self.assertIn("$OutputEncoding", preamble)
+        self.assertEqual(script, "Get-Location")
+        # The real native exit code, not -Command's flattened 1.
+        self.assertIn("exit $LASTEXITCODE", trailer)
+        self.assertTrue(trailer.startswith("if (-not $?)"))
+
+    async def test_powershell_wrapper_keeps_multiline_scripts_intact(self):
+        wrapped = bash_module._powershell_script("Get-Location\n# trailing comment")
+        lines = wrapped.split("\n")
+        self.assertEqual(lines[1:3], ["Get-Location", "# trailing comment"])
+        # The trailer sits on its own line so a trailing comment cannot swallow it.
+        self.assertEqual(lines[-1], bash_module._POWERSHELL_EXIT_TRAILER)
 
     async def test_shell_argv_uses_c_for_posix_shell(self):
         with mock.patch.dict(os.environ, {"PRIME_AGENT_BASH_SHELL": "/bin/sh"}):

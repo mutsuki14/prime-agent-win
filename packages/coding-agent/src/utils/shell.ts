@@ -1,13 +1,17 @@
 import { existsSync } from "node:fs";
 import { delimiter } from "node:path";
-import { spawn, spawnSync } from "child_process";
+import { spawnSync } from "child_process";
 import { getBinDir } from "../config.js";
 import { recordOrphanProcessState } from "../core/orphan-process-journal.js";
 import {
+	buildShellCommandArgs,
 	getShellInvocationArgs,
+	killWindowsProcessTree,
+	WINDOWS_GIT_BASH_PATHS,
 	WINDOWS_PWSH_PATHS,
+	windowsHelperEnv,
 	windowsInboxPowerShellPath,
-	withWindowsHide,
+	windowsSystem32Path,
 } from "./windows-process.js";
 
 export interface ShellConfig {
@@ -16,12 +20,20 @@ export interface ShellConfig {
 }
 
 export {
+	buildShellCommandArgs,
 	getShellInvocationArgs,
 	isPowerShellExecutable,
 	POWERSHELL_INVOCATION_ARGS,
+	WINDOWS_GIT_BASH_PATHS,
 	WINDOWS_PWSH_PATHS,
 	windowsInboxPowerShellPath,
+	wrapPowerShellScript,
 } from "./windows-process.js";
+
+/** argv tail for running `command` in a resolved shell (PowerShell gets the UTF-8/exit-code wrapper). */
+export function shellCommandArgs(config: ShellConfig, command: string): string[] {
+	return buildShellCommandArgs(config.shell, command);
+}
 
 function firstExistingPath(paths: readonly string[]): string | undefined {
 	for (const path of paths) {
@@ -39,7 +51,12 @@ function firstExistingPath(paths: readonly string[]): string | undefined {
 function findOnPath(executable: string): string | null {
 	if (process.platform === "win32") {
 		try {
-			const result = spawnSync("where", [executable], withWindowsHide({ encoding: "utf-8", timeout: 5000 }));
+			const result = spawnSync(windowsSystem32Path("where.exe"), [executable], {
+				encoding: "utf-8",
+				timeout: 5000,
+				windowsHide: true,
+				env: windowsHelperEnv(),
+			});
 			if (result.status === 0 && result.stdout) {
 				const firstMatch = result.stdout.trim().split(/\r?\n/)[0];
 				if (firstMatch && existsSync(firstMatch)) {
@@ -53,7 +70,7 @@ function findOnPath(executable: string): string | null {
 	}
 
 	try {
-		const result = spawnSync("which", [executable], { encoding: "utf-8", timeout: 5000 });
+		const result = spawnSync("which", [executable], { encoding: "utf-8", timeout: 5000, windowsHide: true });
 		if (result.status === 0 && result.stdout) {
 			const firstMatch = result.stdout.trim().split(/\r?\n/)[0];
 			if (firstMatch) {
@@ -70,33 +87,26 @@ function findBashOnPath(): string | null {
 	return findOnPath(process.platform === "win32" ? "bash.exe" : "bash");
 }
 
-function windowsGitBashPaths(): string[] {
-	const paths: string[] = [];
-	const programFiles = process.env.ProgramFiles;
-	if (programFiles) {
-		paths.push(`${programFiles}\\Git\\bin\\bash.exe`);
-	}
-	const programFilesX86 = process.env["ProgramFiles(x86)"];
-	if (programFilesX86) {
-		paths.push(`${programFilesX86}\\Git\\bin\\bash.exe`);
-	}
-	return paths;
+/**
+ * Well-known Windows shells in preference order: PowerShell 7, in-box Windows
+ * PowerShell 5.1, Git Bash. Absolute paths only.
+ */
+function resolveWellKnownWindowsShell(): string | undefined {
+	return (
+		firstExistingPath(WINDOWS_PWSH_PATHS) ??
+		firstExistingPath([windowsInboxPowerShellPath()]) ??
+		firstExistingPath(WINDOWS_GIT_BASH_PATHS)
+	);
 }
 
 function resolveWindowsUserShell(): string | undefined {
-	const pwsh = firstExistingPath(WINDOWS_PWSH_PATHS);
-	if (pwsh) {
-		return pwsh;
-	}
-	const inbox = windowsInboxPowerShellPath();
-	if (existsSync(inbox)) {
-		return inbox;
-	}
-	const gitBash = firstExistingPath(windowsGitBashPaths());
-	if (gitBash) {
-		return gitBash;
-	}
-	return findOnPath("pwsh.exe") ?? findOnPath("powershell.exe") ?? findBashOnPath() ?? undefined;
+	return (
+		resolveWellKnownWindowsShell() ??
+		findOnPath("pwsh.exe") ??
+		findOnPath("powershell.exe") ??
+		findBashOnPath() ??
+		undefined
+	);
 }
 
 /**
@@ -140,10 +150,6 @@ export function getShellConfig(customShellPath?: string): ShellConfig {
 	return { shell: "sh", args: ["-c"] };
 }
 
-// Hardcoded literals: ProgramFiles env vars are ambient attacker-influenceable
-// input, the same trust-laundering class as PATH.
-const WINDOWS_GIT_BASH_PATHS = ["C:\\Program Files\\Git\\bin\\bash.exe", "C:\\Program Files (x86)\\Git\\bin\\bash.exe"];
-
 /**
  * Absolute default shell for the kernel's bash(): explicit shellPath wins; POSIX
  * uses /bin/bash else /bin/sh (absolute, never PATH — the kernel inherits a
@@ -160,20 +166,7 @@ export function resolveKernelBashShell(customShellPath?: string): string | undef
 	if (process.platform !== "win32") {
 		return existsSync("/bin/bash") ? "/bin/bash" : "/bin/sh";
 	}
-	const pwsh = firstExistingPath(WINDOWS_PWSH_PATHS);
-	if (pwsh) {
-		return pwsh;
-	}
-	const inbox = windowsInboxPowerShellPath();
-	if (existsSync(inbox)) {
-		return inbox;
-	}
-	for (const path of WINDOWS_GIT_BASH_PATHS) {
-		if (existsSync(path)) {
-			return path;
-		}
-	}
-	return undefined;
+	return resolveWellKnownWindowsShell();
 }
 
 export function getShellEnv(): NodeJS.ProcessEnv {
@@ -259,19 +252,7 @@ export function killTrackedDetachedChildren(): void {
  */
 export function killProcessTree(pid: number): void {
 	if (process.platform === "win32") {
-		// Use taskkill on Windows to kill process tree
-		try {
-			spawn(
-				"taskkill",
-				["/F", "/T", "/PID", String(pid)],
-				withWindowsHide({
-					stdio: "ignore",
-					detached: true,
-				}),
-			);
-		} catch {
-			// Ignore errors if taskkill fails
-		}
+		killWindowsProcessTree(pid);
 	} else {
 		// Use SIGKILL on Unix/Linux/Mac
 		try {

@@ -2,7 +2,7 @@ import { execFileSync, execSync, spawn } from "child_process";
 import { platform } from "os";
 import { isWaylandSession } from "./clipboard-image.js";
 import { clipboard } from "./clipboard-native.js";
-import { POWERSHELL_INVOCATION_ARGS, windowsInboxPowerShellPath } from "./windows-process.js";
+import { POWERSHELL_INVOCATION_ARGS, windowsInboxPowerShellPath, windowsSystem32Path } from "./windows-process.js";
 
 type NativeClipboardExecOptions = {
 	input: string;
@@ -16,6 +16,26 @@ function copyToX11Clipboard(options: NativeClipboardExecOptions): void {
 		execSync("xclip -selection clipboard", options);
 	} catch {
 		execSync("xsel --clipboard --input", options);
+	}
+}
+
+/**
+ * clip.exe decodes stdin with the console code page, so non-ASCII text (for
+ * example Chinese) is mangled on most locales. Read the raw UTF-8 bytes in
+ * PowerShell instead and fall back to clip.exe only if PowerShell fails.
+ */
+const WINDOWS_SET_CLIPBOARD_SCRIPT =
+	"$in = [Console]::OpenStandardInput(); $ms = New-Object System.IO.MemoryStream; $in.CopyTo($ms); Set-Clipboard -Value ([System.Text.Encoding]::UTF8.GetString($ms.ToArray()))";
+
+function copyToWindowsClipboard(options: NativeClipboardExecOptions): void {
+	try {
+		execFileSync(
+			windowsInboxPowerShellPath(),
+			[...POWERSHELL_INVOCATION_ARGS, WINDOWS_SET_CLIPBOARD_SCRIPT],
+			options,
+		);
+	} catch {
+		execFileSync(windowsSystem32Path("clip.exe"), [], options);
 	}
 }
 
@@ -76,7 +96,7 @@ export async function copyToClipboard(text: string): Promise<void> {
 				execSync("pbcopy", options);
 				copied = true;
 			} else if (p === "win32") {
-				execSync("clip", options);
+				copyToWindowsClipboard(options);
 				copied = true;
 			} else {
 				// Linux. Try Termux, Wayland, or X11 clipboard tools.

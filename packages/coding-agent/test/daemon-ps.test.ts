@@ -16,13 +16,32 @@ import {
 	verifyHelloSupervisorPid,
 } from "../src/cli/daemon-ps.js";
 import { getProcessStartId } from "../src/core/session-lease.js";
-import { defaultDaemonSocketDir } from "../src/modes/daemon/daemon-socket.js";
+import {
+	defaultDaemonSocketDir,
+	WINDOWS_DAEMON_PIPE_PATH,
+	windowsWorkerPipePath,
+} from "../src/modes/daemon/daemon-socket.js";
 
 describe("worker socket classification", () => {
 	it.runIf(process.platform !== "win32")("recognizes only worker sockets in the default service directory", () => {
 		expect(isWorkerSocketPath(join(defaultDaemonSocketDir(), "worker-abc.sock"))).toBe(true);
 		expect(isWorkerSocketPath(join(defaultDaemonSocketDir(), "daemon.sock"))).toBe(false);
 		expect(isWorkerSocketPath("/tmp/worker-abc.sock")).toBe(false);
+	});
+
+	it("recognizes worker named pipes on win32", () => {
+		const originalPlatform = Object.getOwnPropertyDescriptor(process, "platform");
+		Object.defineProperty(process, "platform", { value: "win32" });
+		try {
+			expect(isWorkerSocketPath(windowsWorkerPipePath("abc123", "worker-id"))).toBe(true);
+			expect(isWorkerSocketPath(windowsWorkerPipePath("abc123", "worker-id").toUpperCase())).toBe(true);
+			expect(isWorkerSocketPath(WINDOWS_DAEMON_PIPE_PATH)).toBe(false);
+			expect(isWorkerSocketPath(String.raw`\\.\pipe\other-worker-abc`)).toBe(false);
+		} finally {
+			if (originalPlatform) {
+				Object.defineProperty(process, "platform", originalPlatform);
+			}
+		}
 	});
 });
 

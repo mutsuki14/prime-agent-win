@@ -672,6 +672,18 @@ def bash(command: str) -> BashHandle:
 
 _POWERSHELL_NAMES = frozenset({"powershell.exe", "powershell", "pwsh.exe", "pwsh"})
 _POWERSHELL_ARGS = ("-NoLogo", "-NoProfile", "-NonInteractive", "-Command")
+# Mirrors wrapPowerShellScript in packages/coding-agent/src/utils/windows-process.ts.
+# Windows PowerShell 5.1 (and pwsh on a non-UTF-8 locale) emits redirected output
+# in the OEM code page and pipes ASCII into native commands; the host decodes
+# UTF-8. `-Command` also flattens every native failure to exit 1.
+_POWERSHELL_PREAMBLE = (
+    "try { $__primeUtf8 = [System.Text.UTF8Encoding]::new($false); "
+    "[Console]::OutputEncoding = $__primeUtf8; $OutputEncoding = $__primeUtf8 } catch { }"
+)
+_POWERSHELL_EXIT_TRAILER = (
+    "if (-not $?) { if ($LASTEXITCODE -is [int] -and $LASTEXITCODE -ne 0) "
+    "{ exit $LASTEXITCODE }; exit 1 }"
+)
 _WINDOWS_PWSH_PATHS = (
     r"C:\Program Files\PowerShell\7\pwsh.exe",
     r"C:\Program Files\PowerShell\7-preview\pwsh.exe",
@@ -736,10 +748,14 @@ def _shell() -> str:
     return shell or "/bin/sh"
 
 
+def _powershell_script(script: str) -> str:
+    return f"{_POWERSHELL_PREAMBLE}\n{script}\n{_POWERSHELL_EXIT_TRAILER}"
+
+
 def _shell_argv(script: str) -> list[str]:
     shell = _shell()
     if _is_powershell(shell):
-        return [shell, *_POWERSHELL_ARGS, script]
+        return [shell, *_POWERSHELL_ARGS, _powershell_script(script)]
     return [shell, "-c", script]
 
 

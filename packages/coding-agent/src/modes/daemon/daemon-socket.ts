@@ -67,11 +67,18 @@ export interface DaemonSocketIdentity {
 	ino: number;
 }
 
+export const WINDOWS_DAEMON_PIPE_PATH = "\\\\.\\pipe\\prime-agent-daemon";
+export const WINDOWS_WORKER_PIPE_PREFIX = "\\\\.\\pipe\\prime-agent-worker-";
+
 export function defaultDaemonSocketPath(): string {
 	if (process.platform === "win32") {
-		return "\\\\.\\pipe\\prime-agent-daemon";
+		return WINDOWS_DAEMON_PIPE_PATH;
 	}
 	return join(defaultDaemonSocketDir(), "daemon.sock");
+}
+
+export function windowsWorkerPipePath(key: string, workerId: string): string {
+	return `${WINDOWS_WORKER_PIPE_PREFIX}${key}-${workerId}`;
 }
 
 export async function acquireDaemonSocketPathLease(socketPath: string): Promise<DaemonSocketPathLease | undefined> {

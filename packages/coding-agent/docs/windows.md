@@ -41,7 +41,30 @@ npm run build
 prime-agent
 ```
 
-Child processes (daemon workers, `bash()`, helper tools) are created with `CREATE_NO_WINDOW` / `windowsHide`, so they do not flash extra console windows.
+## Update
+
+Re-run the installer, or update the checkout in place (the installer keeps it on the `main` branch):
+
+```powershell
+cd $env:LOCALAPPDATA\Programs\prime-agent-win
+git pull origin main
+npm ci
+npm run build
+```
+
+Child processes (daemon workers, `bash()`, helper tools) are created with `CREATE_NO_WINDOW` / `windowsHide`, so they do not flash extra console windows. System32 helpers (`taskkill.exe`, `where.exe`, `powershell.exe`, `clip.exe`, `rundll32.exe`) are always invoked by absolute path with `NoDefaultCurrentDirectoryInExePath=1`, so a repository cannot plant a lookalike binary.
+
+## Text encoding
+
+Windows PowerShell 5.1 writes redirected output in the OEM code page (GBK on Chinese Windows) and pipes ASCII into native commands. Prime Agent wraps every PowerShell command it runs so both channels use UTF-8 without a BOM, and so the real exit code of the last native command is returned instead of `-Command`'s flattened `1`. Chinese paths, file contents, and `git` output arrive intact.
+
+The Python kernel runs in UTF-8 mode (`PYTHONUTF8=1`) on Windows, so `open()` reads and writes UTF-8 by default. Set `PYTHONUTF8=0` in the environment before starting `prime-agent` to opt out.
+
+Copying from the prompt goes through `Set-Clipboard` with UTF-8 input, so non-ASCII text is copied correctly; `clip.exe` is only a fallback.
+
+## Background services
+
+`prime-agent daemon ps` and `prime-agent shutdown` work on Windows: the default daemon listens on the named pipe `\\.\pipe\prime-agent-daemon`, workers on `\\.\pipe\prime-agent-worker-*`. Named pipes leave no socket files behind, so there is nothing to clean up after a crash. `--force` kills unreachable daemons with `taskkill /T`, taking their worker processes down with them.
 
 ## Custom providers
 

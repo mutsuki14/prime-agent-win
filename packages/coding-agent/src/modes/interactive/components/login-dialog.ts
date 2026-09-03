@@ -1,4 +1,3 @@
-import { win32 } from "node:path";
 import { getOAuthProviders } from "@earendil-works/pi-ai/oauth";
 import {
 	type Component,
@@ -15,6 +14,7 @@ import {
 import { execFile } from "child_process";
 import { PRIME_BUTTERFLY_LOGO } from "../../../themes/prime-logo.js";
 import { copyToClipboard } from "../../../utils/clipboard.js";
+import { windowsSystem32Path } from "../../../utils/windows-process.js";
 import { theme } from "../theme/theme.js";
 import { formatKeyText, keyHint } from "./keybinding-hints.js";
 import { MenuPanel, MenuSearchInput } from "./menu-panel.js";
@@ -176,11 +176,7 @@ export class LoginDialogComponent extends Container implements Focusable {
 			process.platform === "darwin"
 				? ["open", url]
 				: process.platform === "win32"
-					? [
-							win32.join(process.env.SystemRoot ?? "C:\\Windows", "System32", "rundll32.exe"),
-							"url.dll,FileProtocolHandler",
-							url,
-						]
+					? [windowsSystem32Path("rundll32.exe"), "url.dll,FileProtocolHandler", url]
 					: ["xdg-open", url];
 		execFile(command, args, { windowsHide: true }, () => {});
 

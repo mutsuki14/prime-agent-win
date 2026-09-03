@@ -1,0 +1,7 @@
+- Merged upstream Prime Agent v0.9.1 (direct TUI-to-worker session transport, inline Mermaid rendering, hardened daemon startup and recovery, in-place process replacement after `/update`).
+- Fixed garbled non-ASCII output and lost exit codes from PowerShell commands on Windows: `bash()` and the shell tool now force UTF-8 output and return the real native exit code.
+- Changed the Python kernel to run in UTF-8 mode on Windows so `open()` reads and writes UTF-8 files by default.
+- Fixed copying non-ASCII text on Windows by writing the clipboard through `Set-Clipboard` with UTF-8 input instead of `clip.exe`.
+- Fixed `daemon ps` and `shutdown` on Windows: the default named pipe is now discovered, worker pipes are recognized, and `--force` kills the whole process tree.
+- Changed Windows helper invocations (`taskkill`, `where`, `rundll32`, `clip`) to use absolute System32 paths.
+- Changed the Windows installer to keep the checkout on the `main` branch so `git pull origin main` works for manual updates.

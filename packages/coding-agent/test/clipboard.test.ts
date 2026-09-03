@@ -36,6 +36,7 @@ vi.mock("../src/utils/windows-process.js", () => {
 	return {
 		POWERSHELL_INVOCATION_ARGS: ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command"],
 		windowsInboxPowerShellPath: () => "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+		windowsSystem32Path: (...parts: string[]) => ["C:\\Windows\\System32", ...parts].join("\\"),
 	};
 });
 
@@ -139,6 +140,45 @@ describe("copyToClipboard", () => {
 			windowsHide: true,
 		});
 		expect(osc52Writes()).toHaveLength(0);
+	});
+
+	test("copies on Windows through PowerShell with UTF-8 stdin, then clip.exe", async () => {
+		mockedPlatform.mockReturnValue("win32");
+		mocks.clipboard.setText.mockRejectedValue(new Error("native failed"));
+		mockedExecFileSync.mockReturnValue(Buffer.alloc(0));
+
+		await copyToClipboard("中文 text");
+
+		expect(mockedExecFileSync).toHaveBeenCalledTimes(1);
+		const [command, args, options] = mockedExecFileSync.mock.calls[0]!;
+		expect(command).toBe("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe");
+		expect(args).toEqual([
+			"-NoLogo",
+			"-NoProfile",
+			"-NonInteractive",
+			"-Command",
+			expect.stringContaining("Set-Clipboard"),
+		]);
+		expect((args as string[])[4]).toContain("UTF8.GetString");
+		expect(options).toEqual({
+			input: "中文 text",
+			stdio: ["pipe", "ignore", "ignore"],
+			timeout: 5000,
+			windowsHide: true,
+		});
+		expect(mockedExecSync).not.toHaveBeenCalled();
+		expect(osc52Writes()).toHaveLength(0);
+
+		mockedExecFileSync.mockReset();
+		mockedExecFileSync.mockImplementationOnce(() => {
+			throw new Error("powershell failed");
+		});
+		mockedExecFileSync.mockReturnValueOnce(Buffer.alloc(0));
+
+		await copyToClipboard("fallback");
+
+		expect(mockedExecFileSync).toHaveBeenCalledTimes(2);
+		expect(mockedExecFileSync.mock.calls[1]![0]).toBe("C:\\Windows\\System32\\clip.exe");
 	});
 
 	test("uses OSC 52 fallback when native and shell tools fail", async () => {

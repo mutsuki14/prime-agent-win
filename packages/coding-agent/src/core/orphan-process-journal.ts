@@ -1,6 +1,5 @@
-import { spawnSync } from "node:child_process";
 import { closeSync, fsyncSync, openSync, readFileSync, rmSync, writeSync } from "node:fs";
-import { win32 } from "node:path";
+import { killWindowsProcessTree } from "../utils/windows-process.js";
 import { getProcessStartId } from "./session-lease.js";
 
 export const ORPHAN_PROCESS_JOURNAL_ENV = "PRIME_AGENT_INTERNAL_ORPHAN_PROCESS_JOURNAL";
@@ -145,22 +144,11 @@ export function reapKernelOrphanProcesses(kernelPid: number): void {
 }
 
 // Hardened cross-platform tree kill for journaled orphans: absolute System32
-// taskkill /T on win32 (a bare name could resolve a planted CWD taskkill.exe),
-// process-group then pid SIGKILL elsewhere.
+// taskkill /T on win32 (the in-kernel bash() kill paths kill the same tree, not
+// just the shell pid), process-group then pid SIGKILL elsewhere.
 export function killOrphanProcess(pid: number): boolean {
 	if (process.platform === "win32") {
-		// In-kernel bash() kill paths use taskkill /T; the reaper must kill the same tree, not just the shell pid.
-		const result = spawnSync(
-			win32.join(process.env.SystemRoot ?? "C:\\Windows", "System32", "taskkill.exe"),
-			["/F", "/T", "/PID", String(pid)],
-			{
-				stdio: "ignore",
-				timeout: 10_000,
-				windowsHide: true,
-				env: { ...process.env, NoDefaultCurrentDirectoryInExePath: "1" },
-			},
-		);
-		return result.status === 0;
+		return killWindowsProcessTree(pid);
 	}
 	try {
 		process.kill(-pid, "SIGKILL");

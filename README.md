@@ -60,12 +60,21 @@ On first launch, run `/login` or set an API key such as `ANTHROPIC_API_KEY`. **C
 
 On Windows, paste with `Ctrl+V` or `Shift+Insert`, copy the prompt with `Ctrl+Shift+C` or `Ctrl+Insert`, and interrupt with `Ctrl+C`.
 
-On Windows, write PowerShell in `bash()` (`Get-ChildItem`, `Select-String`, `.venv\Scripts\python.exe`). Set `shellPath` only if you want Git Bash.
+On Windows, write PowerShell in `bash()` (`Get-ChildItem`, `Select-String`, `.venv\Scripts\python.exe`). Output is UTF-8 and the real exit code is returned, even on Windows PowerShell 5.1. Set `shellPath` only if you want Git Bash.
 
 ```json
 {
   "shellPath": "C:\\Program Files\\Git\\bin\\bash.exe"
 }
+```
+
+Update an existing install (tracks upstream Prime Agent 0.9.1):
+
+```powershell
+cd $env:LOCALAPPDATA\Programs\prime-agent-win
+git pull origin main
+npm ci
+npm run build
 ```
 
 Manual checkout (same result as the installer):

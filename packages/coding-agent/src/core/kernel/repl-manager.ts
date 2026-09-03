@@ -4,6 +4,7 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { StringDecoder } from "node:string_decoder";
 import { v4 as uuid } from "uuid";
+import { windowsPythonEnvDefaults } from "../../utils/windows-process.js";
 import { reapKernelOrphanProcesses, recordOrphanProcessState } from "../orphan-process-journal.js";
 import { ensureKernelPython } from "./bootstrap.js";
 import {
@@ -253,7 +254,9 @@ export class ReplKernelManager {
 			cwd: this.options.cwd,
 			// bash.py journals its process groups under this pid so the host can
 			// reap them if the runtime dies without running its shutdown hook.
+			// UTF-8 mode is a Windows default only; an explicit PYTHONUTF8 wins.
 			env: {
+				...windowsPythonEnvDefaults(),
 				...process.env,
 				...this.options.env,
 				PRIME_AGENT_KERNEL_OWNER_PID: String(process.pid),
