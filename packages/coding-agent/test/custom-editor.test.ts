@@ -78,6 +78,43 @@ describe("CustomEditor", () => {
 		expect(editor.getText()).toBe("/");
 	});
 
+	it("lets app.clear win over tui.input.copy when both default to ctrl+c", () => {
+		const editor = new CustomEditor(fakeTui, editorTheme, new KeybindingsManager());
+		const clear = vi.fn();
+		const copy = vi.fn();
+		editor.onAction("app.clear", clear);
+		editor.onCopyText = copy;
+
+		editor.handleInput("\x03");
+
+		expect(clear).toHaveBeenCalledTimes(1);
+		expect(copy).not.toHaveBeenCalled();
+	});
+
+	it("routes distinct copy and paste-text bindings to the clipboard handlers", () => {
+		const keybindings = new KeybindingsManager({
+			"tui.input.copy": "ctrl+shift+c",
+			"app.clipboard.pasteText": ["ctrl+v", "shift+insert"],
+			"app.clipboard.pasteImage": "alt+v",
+		});
+		const editor = new CustomEditor(fakeTui, editorTheme, keybindings);
+		const clear = vi.fn();
+		const copy = vi.fn();
+		const paste = vi.fn();
+		editor.onAction("app.clear", clear);
+		editor.onCopyText = copy;
+		editor.onPasteText = paste;
+
+		editor.handleInput("\x1b[99;6u");
+		editor.handleInput("\x16");
+		editor.handleInput("\x03");
+
+		expect(copy).toHaveBeenCalledTimes(1);
+		expect(paste).toHaveBeenCalledTimes(1);
+		expect(clear).toHaveBeenCalledTimes(1);
+		expect(editor.getText()).toBe("");
+	});
+
 	it("inserts a newline for a raw \\n byte instead of firing the ctrl+j edit-diff action", () => {
 		const editor = new CustomEditor(fakeTui, editorTheme, new KeybindingsManager());
 		const toggleEditDiffs = vi.fn();

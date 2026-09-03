@@ -166,16 +166,6 @@ export class CustomEditor extends Editor {
 			return;
 		}
 
-		if (this.keybindings.matches(data, "app.clipboard.pasteText")) {
-			this.onPasteText?.();
-			return;
-		}
-
-		if (this.keybindings.matches(data, "tui.input.copy")) {
-			this.onCopyText?.();
-			return;
-		}
-
 		// Check app keybindings first
 
 		if (this.keybindings.matches(data, "app.agents.back") && this.onAgentsBack?.()) {
@@ -226,6 +216,18 @@ export class CustomEditor extends Editor {
 				handler();
 				return;
 			}
+		}
+
+		// Clipboard text shortcuts run after app actions: on POSIX tui.input.copy
+		// shares ctrl+c with app.clear, which must keep interrupting.
+		if (this.keybindings.matches(data, "app.clipboard.pasteText")) {
+			this.onPasteText?.();
+			return;
+		}
+
+		if (this.keybindings.matches(data, "tui.input.copy")) {
+			this.onCopyText?.();
+			return;
 		}
 
 		if (
