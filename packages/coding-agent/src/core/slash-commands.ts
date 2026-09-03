@@ -139,7 +139,7 @@ const CANONICAL_BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	{
 		name: "login",
 		description: "Configure provider authentication or add a custom OpenAI-compatible provider",
-		argumentHint: "[custom]",
+		argumentHint: "[custom|<provider>]",
 		takesArgument: true,
 	},
 	{

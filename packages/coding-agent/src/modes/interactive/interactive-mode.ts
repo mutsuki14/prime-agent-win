@@ -8180,16 +8180,31 @@ export class InteractiveMode {
 			await this.handleCustomOpenAIProviderCommand();
 			return;
 		}
-		this.showError("Usage: /login [custom]");
+		// `/login <provider>` jumps straight to that provider's login dialog.
+		const authFlows = this.createAuthFlows();
+		const wanted = trimmed.toLowerCase();
+		const providerOption = authFlows
+			.getLoginProviderOptions()
+			.find((option) => option.id.toLowerCase() === wanted || option.name.toLowerCase() === wanted);
+		if (!providerOption) {
+			this.showError(`Unknown provider: ${trimmed}. Usage: /login [custom|<provider id>]`);
+			return;
+		}
+		await this.finishDirectLogin(await authFlows.loginProvider(providerOption));
 	}
 
 	private async handleCustomOpenAIProviderCommand(): Promise<void> {
-		const authResult = await this.createAuthFlows().runCustomOpenAIProviderLogin();
-		if (authResult.status !== "success") {
+		await this.finishDirectLogin(await this.createAuthFlows().runCustomOpenAIProviderLogin());
+	}
+
+	/**
+	 * The /login menu switches to its Models tab after a login; the direct
+	 * commands have no menu, so open the picker on the provider instead.
+	 */
+	private async finishDirectLogin(authResult: AuthenticationResult): Promise<void> {
+		if (authResult.status !== "success" || authResult.kind === "service") {
 			return;
 		}
-		// The /login menu switches to its Models tab after a login; the direct
-		// command has no menu, so open the picker on the new provider instead.
 		if (!(await this.prepareForModelSelectionAfterLogin(authResult))) {
 			await this.showConfigurationMenu("models", authResult.providerId);
 		}

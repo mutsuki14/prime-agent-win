@@ -60,7 +60,7 @@ describe("built-in slash commands", () => {
 	test("exposes /login custom and /provider for the custom OpenAI-compatible wizard", () => {
 		expect(BUILTIN_SLASH_COMMANDS.find((command) => command.name === "login")).toMatchObject({
 			description: "Configure provider authentication or add a custom OpenAI-compatible provider",
-			argumentHint: "[custom]",
+			argumentHint: "[custom|<provider>]",
 			takesArgument: true,
 		});
 		expect(BUILTIN_SLASH_COMMANDS.find((command) => command.name === "provider")).toMatchObject({
