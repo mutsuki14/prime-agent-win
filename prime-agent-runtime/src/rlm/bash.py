@@ -675,14 +675,21 @@ _POWERSHELL_ARGS = ("-NoLogo", "-NoProfile", "-NonInteractive", "-Command")
 # Mirrors wrapPowerShellScript in packages/coding-agent/src/utils/windows-process.ts.
 # Windows PowerShell 5.1 (and pwsh on a non-UTF-8 locale) emits redirected output
 # in the OEM code page and pipes ASCII into native commands; the host decodes
-# UTF-8. `-Command` also flattens every native failure to exit 1.
+# UTF-8. `-Command` also flattens every native failure to exit 1, and 5.1 flips
+# $? to false for native stderr noise (git progress, npm warnings) whenever its
+# own stderr is a pipe, so only a non-zero exit code or a non-native error
+# record may fail the script.
 _POWERSHELL_PREAMBLE = (
     "try { $__primeUtf8 = [System.Text.UTF8Encoding]::new($false); "
-    "[Console]::OutputEncoding = $__primeUtf8; $OutputEncoding = $__primeUtf8 } catch { }"
+    "[Console]::OutputEncoding = $__primeUtf8; $OutputEncoding = $__primeUtf8 } "
+    "catch { <# encoding is best effort #> }"
 )
 _POWERSHELL_EXIT_TRAILER = (
-    "if (-not $?) { if ($LASTEXITCODE -is [int] -and $LASTEXITCODE -ne 0) "
-    "{ exit $LASTEXITCODE }; exit 1 }"
+    "$__primeOk = $?; if (-not $__primeOk) { "
+    "if ($LASTEXITCODE -is [int] -and $LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; "
+    "$__primeErr = $null; if ($Error.Count -gt 0) { $__primeErr = $Error[0] }; "
+    "if (-not ($__primeErr -is [System.Management.Automation.ErrorRecord] -and "
+    "$__primeErr.FullyQualifiedErrorId -like 'NativeCommandError*')) { exit 1 } }"
 )
 _WINDOWS_PWSH_PATHS = (
     r"C:\Program Files\PowerShell\7\pwsh.exe",

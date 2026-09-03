@@ -158,7 +158,7 @@ function readClipboardTextViaWindowsPowerShell(): string {
 		windowsInboxPowerShellPath(),
 		[
 			...POWERSHELL_INVOCATION_ARGS,
-			"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $t = Get-Clipboard -Raw; if ($null -eq $t) { '' } else { $t }",
+			"[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); $t = Get-Clipboard -Raw; if ($null -eq $t) { '' } else { $t }",
 		],
 		{
 			encoding: "utf8",

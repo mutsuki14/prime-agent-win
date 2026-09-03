@@ -71,6 +71,10 @@ describe("windows process helpers", () => {
 		expect(POWERSHELL_SCRIPT_PREAMBLE).toContain("[Console]::OutputEncoding");
 		expect(POWERSHELL_SCRIPT_PREAMBLE).toContain("$OutputEncoding");
 		expect(POWERSHELL_SCRIPT_EXIT_TRAILER).toContain("exit $LASTEXITCODE");
+		// Windows PowerShell 5.1 flips $? for native stderr noise; that must not fail the script.
+		expect(POWERSHELL_SCRIPT_EXIT_TRAILER.startsWith("$__primeOk = $?")).toBe(true);
+		expect(POWERSHELL_SCRIPT_EXIT_TRAILER).toContain("NativeCommandError*");
+		expect(POWERSHELL_SCRIPT_EXIT_TRAILER).toContain("$Error.Count -gt 0");
 	});
 
 	it("builds the full argv tail per shell family", () => {

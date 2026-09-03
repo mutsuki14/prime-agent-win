@@ -76,15 +76,20 @@ export const POWERSHELL_INVOCATION_ARGS = ["-NoLogo", "-NoProfile", "-NonInterac
  * host as mojibake. Force UTF-8 without a BOM on both channels.
  */
 export const POWERSHELL_SCRIPT_PREAMBLE =
-	"try { $__primeUtf8 = [System.Text.UTF8Encoding]::new($false); [Console]::OutputEncoding = $__primeUtf8; $OutputEncoding = $__primeUtf8 } catch { }";
+	"try { $__primeUtf8 = [System.Text.UTF8Encoding]::new($false); [Console]::OutputEncoding = $__primeUtf8; $OutputEncoding = $__primeUtf8 } catch { <# encoding is best effort #> }";
 
 /**
  * `-Command` exits 1 for any failed last command regardless of the native exit
  * code. Propagate the real code the way `sh -c` does; an explicit `exit` in the
  * script still wins because it never reaches this line.
+ *
+ * Windows PowerShell 5.1 also wraps native stderr as NativeCommandError records
+ * whenever its own stderr is a pipe, which flips `$?` to false even when the
+ * command exited 0 (git progress, npm warnings). Treat that as success: only a
+ * non-zero exit code or a non-native error record fails the script.
  */
 export const POWERSHELL_SCRIPT_EXIT_TRAILER =
-	"if (-not $?) { if ($LASTEXITCODE -is [int] -and $LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; exit 1 }";
+	"$__primeOk = $?; if (-not $__primeOk) { if ($LASTEXITCODE -is [int] -and $LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; $__primeErr = $null; if ($Error.Count -gt 0) { $__primeErr = $Error[0] }; if (-not ($__primeErr -is [System.Management.Automation.ErrorRecord] -and $__primeErr.FullyQualifiedErrorId -like 'NativeCommandError*')) { exit 1 } }";
 
 export function wrapPowerShellScript(script: string): string {
 	return `${POWERSHELL_SCRIPT_PREAMBLE}\n${script}\n${POWERSHELL_SCRIPT_EXIT_TRAILER}`;

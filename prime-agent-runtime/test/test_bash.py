@@ -21,6 +21,17 @@ from rlm import bash
 # module through sys.modules for internals.
 bash_module = sys.modules["rlm.bash"]
 
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+
+def _read_repo_file(relative: str) -> str | None:
+    # None outside the monorepo checkout (the runtime can be tested standalone).
+    path = os.path.join(_REPO_ROOT, *relative.split("/"))
+    if not os.path.isfile(path):
+        return None
+    with open(path, encoding="utf-8") as handle:
+        return handle.read()
+
 
 def _win_spawn(procs=None, resume=True):
     # POSIX stand-in for _winjob.spawn_in_job: a real Popen plus a resume() mock (Ubuntu CI).
@@ -576,9 +587,20 @@ class BashTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("[Console]::OutputEncoding", preamble)
         self.assertIn("$OutputEncoding", preamble)
         self.assertEqual(script, "Get-Location")
-        # The real native exit code, not -Command's flattened 1.
+        # The real native exit code, not -Command's flattened 1, and 5.1's
+        # NativeCommandError stderr wrapping must not count as failure.
         self.assertIn("exit $LASTEXITCODE", trailer)
-        self.assertTrue(trailer.startswith("if (-not $?)"))
+        self.assertTrue(trailer.startswith("$__primeOk = $?"))
+        self.assertIn("NativeCommandError*", trailer)
+        self.assertEqual(
+            trailer,
+            bash_module._POWERSHELL_EXIT_TRAILER,
+        )
+        # Byte-for-byte parity with the host wrapper in windows-process.ts.
+        host_source = _read_repo_file("packages/coding-agent/src/utils/windows-process.ts")
+        if host_source is not None:
+            self.assertIn(bash_module._POWERSHELL_PREAMBLE, host_source)
+            self.assertIn(bash_module._POWERSHELL_EXIT_TRAILER, host_source)
 
     async def test_powershell_wrapper_keeps_multiline_scripts_intact(self):
         wrapped = bash_module._powershell_script("Get-Location\n# trailing comment")
