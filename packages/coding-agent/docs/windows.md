@@ -58,6 +58,8 @@ Child processes (daemon workers, `bash()`, helper tools) are created with `CREAT
 
 Windows PowerShell 5.1 writes redirected output in the OEM code page (GBK on Chinese Windows) and pipes ASCII into native commands. Prime Agent wraps every PowerShell command it runs so both channels use UTF-8 without a BOM, and so the real exit code of the last native command is returned instead of `-Command`'s flattened `1`. Chinese paths, file contents, and `git` output arrive intact.
 
+Windows PowerShell 5.1 also re-emits native stderr (git progress, npm warnings) as `NativeCommandError` records when its stderr is a pipe. Prime Agent does not count that as failure, but the records add `At line:` noise to the output. Install PowerShell 7 (`winget install Microsoft.PowerShell`) for clean stderr; it is preferred automatically when present.
+
 The Python kernel runs in UTF-8 mode (`PYTHONUTF8=1`) on Windows, so `open()` reads and writes UTF-8 by default. Set `PYTHONUTF8=0` in the environment before starting `prime-agent` to opt out.
 
 Copying from the prompt goes through `Set-Clipboard` with UTF-8 input, so non-ASCII text is copied correctly; `clip.exe` is only a fallback.
@@ -68,7 +70,7 @@ Copying from the prompt goes through `Set-Clipboard` with UTF-8 input, so non-AS
 
 ## Custom providers
 
-`/login` pins **Custom / 自定义 OpenAI-compatible** at the top of Providers. You can also run `/provider` or `/login custom` to open the wizard directly. Enter a provider id, base URL, API key, and model id. Prime Agent writes `~/.prime/agent/models.json`. Local servers such as Ollama can use any API key value (for example `ollama`). Then open `/model` and select the new model.
+`/login` pins **Custom / 自定义 OpenAI-compatible** at the top of Providers. You can also run `/provider` or `/login custom` to open the wizard directly. Enter a provider id, base URL, API key, and model id. Prime Agent writes `~/.prime/agent/models.json`. Local servers such as Ollama can use any API key value (for example `ollama`). The model picker then opens on the new provider; `/model` lists it afterwards as well.
 
 You can still edit `models.json` by hand. See [Custom Models](models.md).
 

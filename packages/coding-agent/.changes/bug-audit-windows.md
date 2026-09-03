@@ -1,0 +1,3 @@
+- Fixed Ctrl+C no longer interrupting on macOS and Linux: the copy shortcut shared its default key with interrupt and was handled first.
+- Fixed PowerShell commands on Windows PowerShell 5.1 reporting failure when a successful command only wrote to stderr (git progress, npm warnings).
+- Changed `/provider` and `/login custom` to open the model picker on the new provider after the wizard completes.

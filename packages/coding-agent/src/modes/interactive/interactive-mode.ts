@@ -8185,8 +8185,13 @@ export class InteractiveMode {
 
 	private async handleCustomOpenAIProviderCommand(): Promise<void> {
 		const authResult = await this.createAuthFlows().runCustomOpenAIProviderLogin();
-		if (authResult.status === "success") {
-			await this.prepareForModelSelectionAfterLogin(authResult);
+		if (authResult.status !== "success") {
+			return;
+		}
+		// The /login menu switches to its Models tab after a login; the direct
+		// command has no menu, so open the picker on the new provider instead.
+		if (!(await this.prepareForModelSelectionAfterLogin(authResult))) {
+			await this.showConfigurationMenu("models", authResult.providerId);
 		}
 	}
 
